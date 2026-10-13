@@ -5,10 +5,12 @@ import { Spinner } from '../../components/ui/Spinner'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { listAppointments } from '../../api/appointments.api'
-import { getClientLoyalty, redeemLoyaltyPoints } from '../../api/clients.api'
+import { anonymizeClient, exportClientData, getClientLoyalty, redeemLoyaltyPoints } from '../../api/clients.api'
+import { useAuth } from '../../contexts/auth-state'
+import { isAxiosError } from 'axios'
 import { getSettings } from '../../api/settings.api'
 import { formatCurrency } from '../../utils/formatCurrency'
-import { Star, Gift } from 'lucide-react'
+import { Star, Gift, Download, UserX } from 'lucide-react'
 import type { ClientWithLoyalty } from '../../types'
 
 interface Props {
@@ -53,10 +55,41 @@ export function ClientHistoryModal({ open, onClose, client }: Props) {
     onSuccess: (updated) => {
       qc.invalidateQueries({ queryKey: ['client-loyalty', client?.id] })
       qc.invalidateQueries({ queryKey: ['clients'] })
-      setRedeemMsg(`✅ ${redeemPoints} pontos resgatados! Novo saldo: ${updated.pointsBalance} pts`)
+      setRedeemMsg(`${redeemPoints} pontos resgatados. Novo saldo: ${updated.pointsBalance} pts`)
       setRedeemPoints('')
     },
-    onError: (err) => setRedeemMsg(`❌ ${(err as Error).message}`),
+    onError: (err) => setRedeemMsg((err as Error).message),
+  })
+
+  // Pedidos do titular (LGPD): só o dono baixa ou remove os dados pessoais.
+  const { admin } = useAuth()
+  const isOwner = admin?.role === 'OWNER'
+  const [privacyMsg, setPrivacyMsg] = useState('')
+  const errorText = (err: unknown) =>
+    (isAxiosError(err) && err.response?.data?.error?.message) || 'Não foi possível concluir.'
+
+  async function handleExport() {
+    setPrivacyMsg('')
+    try {
+      const data = await exportClientData(client!.id)
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `dados-${client!.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setPrivacyMsg(errorText(err))
+    }
+  }
+
+  const anonymizeMutation = useMutation({
+    mutationFn: () => anonymizeClient(client!.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clients'] })
+      onClose()
+    },
+    onError: (err) => setPrivacyMsg(errorText(err)),
   })
 
   const appointments = appointmentsData?.data ?? []
@@ -73,7 +106,7 @@ export function ClientHistoryModal({ open, onClose, client }: Props) {
     const pts = Number(redeemPoints)
     if (!pts || pts <= 0) return
     if (pts > balance) {
-      setRedeemMsg(`❌ Saldo insuficiente (${balance} pts disponíveis)`)
+      setRedeemMsg(`Saldo insuficiente (${balance} pts disponíveis)`)
       return
     }
     setRedeemMsg('')
@@ -187,6 +220,36 @@ export function ClientHistoryModal({ open, onClose, client }: Props) {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {isOwner && (
+            <div className="border-t border-zinc-200 pt-4">
+              <p className="text-sm font-semibold text-zinc-800">Dados pessoais</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                Quando o cliente pedir, entregue a cópia dos dados ou remova nome, telefone, e-mail e
+                fichas. Os atendimentos e valores continuam no financeiro como "Cliente removido".
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button variant="secondary" onClick={handleExport}>
+                  <Download className="h-4 w-4" /> Baixar dados
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={anonymizeMutation.isPending}
+                  onClick={() => {
+                    if (
+                      confirm(
+                        `Remover os dados pessoais de ${client?.name}? Isso não pode ser desfeito.`,
+                      )
+                    )
+                      anonymizeMutation.mutate()
+                  }}
+                >
+                  <UserX className="h-4 w-4" /> Remover dados pessoais
+                </Button>
+              </div>
+              {privacyMsg && <p className="mt-2 text-xs text-red-700">{privacyMsg}</p>}
             </div>
           )}
         </div>

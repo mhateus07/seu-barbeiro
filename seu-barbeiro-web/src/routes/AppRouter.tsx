@@ -26,6 +26,7 @@ const ManagePage = page(() => import('../pages/public/ManagePage'), 'ManagePage'
 const SubscriptionsPage = page(() => import('../pages/subscriptions/SubscriptionsPage'), 'SubscriptionsPage')
 const CashPage = page(() => import('../pages/cash/CashPage'), 'CashPage')
 const HomePage = page(() => import('../pages/site/HomePage'), 'HomePage')
+const PrivacyPage = page(() => import('../pages/site/PrivacyPage'), 'PrivacyPage')
 
 const publicFallback = <div className="min-h-dvh bg-zinc-950" />
 
@@ -38,6 +39,10 @@ export function AppRouter() {
         <Route
           path="/"
           element={<Suspense fallback={<div className="min-h-dvh bg-navalha" />}><HomePage /></Suspense>}
+        />
+        <Route
+          path="/privacidade"
+          element={<Suspense fallback={<div className="min-h-dvh bg-white" />}><PrivacyPage /></Suspense>}
         />
         <Route
           path="/oferta"

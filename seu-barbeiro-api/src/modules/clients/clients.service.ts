@@ -135,3 +135,118 @@ export async function listClientsWithLoyalty(
 
   return { data, total, page, limit }
 }
+
+// ─── LGPD: cópia dos dados e anonimização ────────────────────────────────────
+
+const OPEN_APPOINTMENT = ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS'] as const
+const OPEN_SUBSCRIPTION = ['PENDING', 'ACTIVE', 'PAST_DUE']
+
+/** Tudo o que o salão guarda sobre a pessoa, para entregar a ela quando pedir. */
+export async function exportClientData(id: string) {
+  const client = await getClientById(id)
+  const [appointments, records, subscriptions, loyalty, waitlist, messages] = await Promise.all([
+    prisma.appointment.findMany({
+      where: { clientId: id },
+      orderBy: { startsAt: 'desc' },
+      include: {
+        barber: { select: { name: true } },
+        services: { include: { service: { select: { name: true } } } },
+        payments: { select: { method: true, amount: true, createdAt: true } },
+      },
+    }),
+    prisma.technicalRecord.findMany({ where: { clientId: id }, orderBy: { createdAt: 'desc' } }),
+    prisma.subscription.findMany({
+      where: { clientId: id },
+      include: { plan: { select: { name: true } } },
+    }),
+    prisma.loyaltyCard.findUnique({ where: { clientId: id } }),
+    prisma.waitlistEntry.findMany({ where: { clientId: id } }),
+    prisma.notificationLog.findMany({
+      where: { clientId: id },
+      orderBy: { createdAt: 'desc' },
+      select: { type: true, phone: true, message: true, status: true, sentAt: true, createdAt: true },
+    }),
+  ])
+  return {
+    geradoEm: new Date().toISOString(),
+    cadastro: {
+      nome: client.name,
+      telefone: client.phone,
+      email: client.email,
+      nascimento: client.birthDate,
+      observacoes: client.notes,
+      autorizaContato: client.marketingConsent,
+      criadoEm: client.createdAt,
+      atualizadoEm: client.updatedAt,
+    },
+    atendimentos: appointments.map((a) => ({
+      inicio: a.startsAt,
+      fim: a.endsAt,
+      situacao: a.status,
+      profissional: a.barber.name,
+      servicos: a.services.map((s) => s.service.name),
+      valor: Number(a.totalPrice),
+      observacoes: a.notes,
+      pagamentos: a.payments.map((p) => ({ forma: p.method, valor: Number(p.amount), em: p.createdAt })),
+    })),
+    fichasTecnicas: records.map((r) => ({
+      formula: r.formula,
+      produtos: r.products,
+      preferencias: r.preferences,
+      observacoes: r.notes,
+      fotos: r.photoUrls,
+      autorizaFotos: r.photoConsent,
+      criadaEm: r.createdAt,
+    })),
+    assinaturas: subscriptions.map((s) => ({
+      plano: s.plan.name,
+      situacao: s.status,
+      valor: Number(s.priceSnapshot),
+      inicio: s.currentPeriodStart,
+      fim: s.currentPeriodEnd,
+      canceladaEm: s.cancelledAt,
+    })),
+    fidelidade: loyalty ? { visitas: loyalty.visitCount, pontos: loyalty.pointsBalance } : null,
+    listaDeEspera: waitlist.map((w) => ({ de: w.from, ate: w.to, situacao: w.status })),
+    mensagens: messages,
+  }
+}
+
+/**
+ * Atende ao pedido de exclusão sem apagar o financeiro: o cadastro perde nome,
+ * telefone, e-mail, nascimento e observações; fichas, mensagens, lista de
+ * espera e campanhas da pessoa são apagadas. Atendimentos e pagamentos ficam,
+ * ligados a "Cliente removido", porque o caixa e as comissões dependem deles.
+ */
+export async function anonymizeClient(id: string) {
+  await getClientById(id)
+  const [open, subscriptions] = await Promise.all([
+    prisma.appointment.count({
+      where: { clientId: id, status: { in: [...OPEN_APPOINTMENT] }, startsAt: { gt: new Date() } },
+    }),
+    prisma.subscription.count({ where: { clientId: id, status: { in: OPEN_SUBSCRIPTION } } }),
+  ])
+  if (open) throw new Error('Cancele os horários marcados deste cliente antes de remover os dados')
+  if (subscriptions) throw new Error('Cancele a assinatura deste cliente antes de remover os dados')
+  await prisma.$transaction([
+    prisma.technicalRecord.deleteMany({ where: { clientId: id } }),
+    prisma.waitlistEntry.deleteMany({ where: { clientId: id } }),
+    prisma.outreach.deleteMany({ where: { clientId: id } }),
+    prisma.notificationLog.deleteMany({ where: { clientId: id } }),
+    prisma.appointment.updateMany({
+      where: { clientId: id },
+      data: { notes: null, manageToken: null },
+    }),
+    prisma.client.update({
+      where: { id },
+      data: {
+        name: 'Cliente removido',
+        phone: `removido-${id}`,
+        email: null,
+        birthDate: null,
+        notes: null,
+        marketingConsent: false,
+      },
+    }),
+  ])
+}

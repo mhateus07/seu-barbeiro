@@ -160,12 +160,37 @@ A produção roda na VPS com Easypanel/Traefik: um container serve a API e o pai
 emite os certificados e redireciona o domínio antigo (`OLD_DOMAIN`) para o atual
 (`APP_DOMAIN`). As migrações rodam a cada inicialização do container.
 
-O `deploy.sh` envia o código para `/opt/seu-barbeiro`, faz backup do banco em
-`backups/` (mantém os 10 mais recentes), reconstrói e sobe os containers e espera
-o app ficar saudável. Na primeira instalação, rode `ADMIN_EMAIL=voce@exemplo.com
+O `deploy.sh` envia o código para `/opt/seu-barbeiro`, faz backup do banco,
+reconstrói e sobe os containers e espera o app ficar saudável. Na primeira instalação, rode `ADMIN_EMAIL=voce@exemplo.com
 ./deploy.sh`: ele gera o `.env` do servidor com senhas aleatórias (modelo em
 `.env.production.example`), cria o acesso do dono e salva a senha inicial em
 `/root/seu-barbeiro-acesso-inicial.txt`, fora do `.env`.
+
+### Backups
+
+`scripts/backup.sh` copia todos os bancos (`pg_dumpall`), cifra com AES-256 usando
+`BACKUP_PASSPHRASE` e guarda os 14 mais recentes em `backups/`. Roda em cada deploy
+e todo dia às 03:30 pelo cron (`/etc/cron.d/seu-barbeiro-backup`, instalado pelo
+`deploy.sh`). **Guarde a `BACKUP_PASSPHRASE` fora da VPS**: sem ela nenhum backup
+abre. Para ter cópia fora do servidor, instale e configure o `rclone` na VPS e
+defina `BACKUP_REMOTE` no `.env` (ex.: `drive:seu-barbeiro`); as cópias de lá com
+mais de 60 dias são apagadas. A restauração está no topo do script.
+
+### Segurança e LGPD
+
+- Login: 5 senhas erradas para o mesmo e-mail bloqueiam o acesso por 15 minutos.
+  Trocar a senha, desativar o acesso ou "Sair de todos os aparelhos"
+  (Configurações → Segurança) derruba as sessões abertas (`admins.tokenVersion`).
+- Tokens do Mercado Pago e do WhatsApp ficam cifrados no banco (AES-256-GCM, chave
+  `SETTINGS_KEY` do `.env`, gerada pelo `deploy.sh`) e nunca voltam ao navegador.
+- Pelo site, um telefone tem no máximo 3 horários em aberto e cada aparelho faz até
+  10 agendamentos por hora (`PUBLIC_BOOKING_LIMIT`).
+- O dono baixa os dados de um cliente ou remove os dados pessoais (histórico do
+  cliente → Dados pessoais). Atendimentos e valores ficam como "Cliente removido".
+- Mensagens de WhatsApp com mais de 12 meses são apagadas pelo worker; ações
+  sensíveis ficam em `audit_logs` por 5 anos (Configurações → Segurança).
+- Política de privacidade em `/privacidade`, com links no agendamento, no site e
+  na entrada.
 
 ## Verificação
 

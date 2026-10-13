@@ -126,6 +126,7 @@ test('novas funcionalidades', async (t) => {
   process.env.PUBLIC_WEB_URL = 'https://salao.test'
   process.env.TZ = 'America/Sao_Paulo'
   process.env.NODE_ENV = 'test'
+  process.env.PUBLIC_BOOKING_LIMIT = '100000'
   for (const value of [urlA, urlB])
     execFileSync(
       process.execPath,
@@ -619,5 +620,129 @@ test('novas funcionalidades', async (t) => {
     assert.equal((await book(day(23), '09:00')).status, 201)
     const again = await request(`/appointments/${r.data.id}`, { method: 'DELETE', token: owner })
     assert.equal(again.status, 400)
+  })
+
+  await t.test('login bloqueia o e-mail depois de 5 senhas erradas', async () => {
+    const email = `OWNER-feat-${stamp}@test.local`
+    const wrong = () =>
+      request('/auth/login', { method: 'POST', body: { email, password: 'senha-errada-123' } })
+    for (let i = 0; i < 4; i++) assert.equal((await wrong()).status, 401)
+    assert.equal((await wrong()).status, 401)
+    // Bloqueado: nem a senha certa entra até passar o prazo.
+    const locked = await request('/auth/login', {
+      method: 'POST',
+      body: { email, password: 'test-password-123' },
+    })
+    assert.equal(locked.status, 429)
+    assert.ok(await db.auditLog.findFirst({ where: { action: 'login.locked' } }))
+    // Outro e-mail do mesmo salão segue entrando.
+    assert.equal(
+      (
+        await request('/auth/login', {
+          method: 'POST',
+          body: { email: `PROFESSIONAL-feat-${stamp}@test.local`, password: 'test-password-123' },
+        })
+      ).status,
+      200,
+    )
+  })
+
+  await t.test('trocar a senha e sair de todos derrubam as sessões abertas', async () => {
+    const user = await request('/operations/users', {
+      method: 'POST',
+      token: owner,
+      body: { name: 'Recepção', email: `rec-${stamp}@test.local`, password: 'recepcao-123456', role: 'RECEPTION' },
+    })
+    assert.equal(user.status, 201)
+    const enter = async (password) =>
+      (await request('/auth/login', { method: 'POST', body: { email: `rec-${stamp}@test.local`, password } })).data
+        .data.token
+    const first = await enter('recepcao-123456')
+    assert.equal((await request('/clients', { token: first })).status, 200)
+    await request(`/operations/users/${user.data.id}`, {
+      method: 'PATCH',
+      token: owner,
+      body: { password: 'recepcao-nova-123' },
+    })
+    assert.equal((await request('/clients', { token: first })).status, 401)
+    const second = await enter('recepcao-nova-123')
+    assert.equal((await request('/clients', { token: second })).status, 200)
+    assert.equal((await request('/auth/logout-all', { method: 'POST', token: second })).status, 200)
+    assert.equal((await request('/clients', { token: second })).status, 401)
+  })
+
+  await t.test('tokens do salão ficam cifrados no banco', async () => {
+    const saved = await request('/settings', {
+      method: 'PATCH',
+      token: owner,
+      body: { settings: { whatsapp_api_key: 'chave-secreta-whatsapp' } },
+    })
+    assert.equal(saved.status, 200)
+    assert.equal(saved.data.data.whatsapp_api_key, undefined)
+    assert.equal(saved.data.data.whatsapp_api_key_set, 'true')
+    const row = await db.settings.findUnique({ where: { key: 'whatsapp_api_key' } })
+    assert.match(row.value, /^enc:v1:/)
+    assert.ok(!row.value.includes('chave-secreta'))
+    const { getSettings, encryptStoredSecrets } = require('../dist/modules/settings/settings.service')
+    assert.equal((await run(() => getSettings())).whatsapp_api_key, 'chave-secreta-whatsapp')
+    // Token antigo em texto puro continua funcionando e é cifrado na inicialização.
+    assert.equal((await run(() => getSettings())).mp_access_token, 'TEST-fake-token-for-integration-tests')
+    await run(() => encryptStoredSecrets())
+    assert.match((await db.settings.findUnique({ where: { key: 'mp_access_token' } })).value, /^enc:v1:/)
+    assert.equal((await run(() => getSettings())).mp_access_token, 'TEST-fake-token-for-integration-tests')
+    await db.settings.deleteMany({ where: { key: 'whatsapp_api_key' } })
+  })
+
+  await t.test('pelo site, um telefone tem no máximo 3 horários em aberto', async () => {
+    await db.settings.update({ where: { key: 'deposit_mode' }, data: { value: 'off' } })
+    const same = phone()
+    for (const h of ['08:00', '08:30', '09:30'])
+      assert.equal((await book(day(30), h, { clientPhone: same })).status, 201)
+    const fourth = await book(day(30), '10:00', { clientPhone: same })
+    assert.equal(fourth.status, 400)
+    assert.match(fourth.data.message, /já tem horários marcados/)
+  })
+
+  await t.test('dono exporta e anonimiza os dados de um cliente', async () => {
+    const client = await db.client.create({
+      data: { name: `Titular ${stamp}`, phone: phone().replace(/\D/g, ''), email: `t-${stamp}@x.test`, notes: 'alergia' },
+    })
+    await db.technicalRecord.create({ data: { clientId: client.id, notes: 'ficha', authorId: 'x' } })
+    await db.notificationLog.create({
+      data: { type: 'CUSTOM', phone: client.phone, message: 'oi', clientId: client.id, status: 'SENT' },
+    })
+    assert.equal((await request(`/clients/${client.id}/export`, { token: pro })).status, 403)
+    const exported = await request(`/clients/${client.id}/export`, { token: owner })
+    assert.equal(exported.status, 200)
+    assert.equal(exported.data.data.cadastro.nome, `Titular ${stamp}`)
+    assert.equal(exported.data.data.fichasTecnicas.length, 1)
+    assert.equal(exported.data.data.mensagens.length, 1)
+    const removed = await request(`/clients/${client.id}/anonymize`, { method: 'POST', token: owner })
+    assert.equal(removed.status, 200)
+    const after = await db.client.findUnique({ where: { id: client.id } })
+    assert.equal(after.name, 'Cliente removido')
+    assert.equal(after.email, null)
+    assert.equal(after.notes, null)
+    assert.ok(!after.phone.match(/^\d+$/))
+    assert.equal(await db.technicalRecord.count({ where: { clientId: client.id } }), 0)
+    assert.equal(await db.notificationLog.count({ where: { clientId: client.id } }), 0)
+    assert.ok(await db.auditLog.findFirst({ where: { action: 'client.anonymize', entityId: client.id } }))
+    const log = await request('/operations/audit', { token: owner })
+    assert.equal(log.status, 200)
+    assert.ok(log.data.some((r) => r.action === 'client.export'))
+  })
+
+  await t.test('mensagens com mais de 12 meses são apagadas', async () => {
+    const { purgeOldRecords } = require('../dist/modules/notifications/notifications.service')
+    const old = await db.notificationLog.create({
+      data: { type: 'CUSTOM', phone: '5532900000000', message: 'antiga', status: 'SENT', createdAt: new Date(Date.now() - 400 * 86400000) },
+    })
+    const recent = await db.notificationLog.create({
+      data: { type: 'CUSTOM', phone: '5532900000000', message: 'recente', status: 'SENT' },
+    })
+    await run(() => purgeOldRecords())
+    assert.equal(await db.notificationLog.findUnique({ where: { id: old.id } }), null)
+    assert.ok(await db.notificationLog.findUnique({ where: { id: recent.id } }))
+    await db.notificationLog.delete({ where: { id: recent.id } })
   })
 })

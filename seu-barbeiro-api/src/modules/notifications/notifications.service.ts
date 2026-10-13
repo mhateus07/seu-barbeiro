@@ -204,6 +204,30 @@ export async function processNotificationQueue() {
   }
 }
 let running = false
+/*
+  Retenção (LGPD): mensagens enviadas ou que falharam guardam telefone e texto.
+  Depois de 12 meses não servem mais para a operação e são apagadas; o
+  registro de ações sensíveis fica 5 anos.
+*/
+const MESSAGE_RETENTION_DAYS = 365
+const AUDIT_RETENTION_DAYS = 5 * 365
+export async function purgeOldRecords(now = new Date()) {
+  const day = 86400000
+  const [messages, audits] = await Promise.all([
+    prisma.notificationLog.deleteMany({
+      where: {
+        status: { in: ['SENT', 'FAILED'] },
+        createdAt: { lt: new Date(now.getTime() - MESSAGE_RETENTION_DAYS * day) },
+      },
+    }),
+    prisma.auditLog.deleteMany({
+      where: { createdAt: { lt: new Date(now.getTime() - AUDIT_RETENTION_DAYS * day) } },
+    }),
+  ])
+  return { messages: messages.count, audits: audits.count }
+}
+
+let lastPurge = 0
 export function startNotificationWorker() {
   const tick = async () => {
     if (running) return
@@ -217,11 +241,13 @@ export function startNotificationWorker() {
             await runSubscriptionCycle()
             await sendPendingReminders()
             await processNotificationQueue()
+            if (Date.now() - lastPurge > 3600000) await purgeOldRecords()
           } catch {
             console.error(`Falha no worker do salão ${salon.slug}`)
           }
         })
     } finally {
+      if (Date.now() - lastPurge > 3600000) lastPurge = Date.now()
       running = false
     }
   }

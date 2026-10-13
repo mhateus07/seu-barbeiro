@@ -27,6 +27,7 @@ rsync -az --delete \
   --exclude 'backups' \
   --exclude '.claude' \
   --exclude 'Fotos_seu_barbeiro' \
+  --exclude 'scripts/gravar-telas' \
   --exclude 'agenda-demo.png' \
   "$PROJECT_DIR/" "$VPS:$REMOTE_DIR/"
 
@@ -74,14 +75,25 @@ EOF
       "${KEYS% *}" "${KEYS#* }" "$APP_DOMAIN" >> .env
   fi
 
-  if [ -n "$(docker compose ps -q postgres 2>/dev/null)" ]; then
-    echo "  → Backup do banco..."
-    mkdir -p backups && chmod 700 backups
-    # < /dev/null: o exec não pode consumir o restante deste script (vem pelo stdin).
-    docker compose exec -T postgres pg_dump -U seubarbeiro -d seu_barbeiro --no-owner < /dev/null \
-      | gzip > "backups/seu-barbeiro-$(date +%Y%m%d-%H%M%S).sql.gz"
-    ls -1t backups/*.sql.gz | tail -n +11 | xargs -r rm -f
+  # Chave que cifra os tokens do salão no banco e frase dos backups: geradas
+  # uma vez. Sem a frase, nenhum backup abre: guarde uma cópia fora da VPS.
+  if ! grep -q '^SETTINGS_KEY=' .env; then
+    umask 077
+    printf 'SETTINGS_KEY=%s\n' "$(openssl rand -hex 32)" >> .env
   fi
+  if ! grep -q '^BACKUP_PASSPHRASE=' .env; then
+    umask 077
+    printf 'BACKUP_PASSPHRASE=%s\n' "$(openssl rand -base64 33 | tr -d '/+=' | head -c 40)" >> .env
+    echo "  ! Frase dos backups gerada. Copie BACKUP_PASSPHRASE do .env da VPS para um lugar seguro fora dela."
+  fi
+
+  echo "  → Backup do banco (cifrado)..."
+  bash scripts/backup.sh
+
+  # Backup diário às 03:30 (hora do servidor), além do feito em cada deploy.
+  printf '30 3 * * * root cd %s && bash scripts/backup.sh >> /var/log/seu-barbeiro-backup.log 2>&1\n' \
+    "$REMOTE_DIR" > /etc/cron.d/seu-barbeiro-backup
+  chmod 644 /etc/cron.d/seu-barbeiro-backup
 
   echo "  → Build e subida (migrações rodam na inicialização do app)..."
   docker compose up -d --build

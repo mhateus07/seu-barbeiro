@@ -1,5 +1,10 @@
 import { Request, Response, NextFunction } from 'express'
-export function rateLimit(limit: number, windowMs: number) {
+// `message` no topo para as páginas públicas; `error.message` para o painel.
+export function rateLimit(
+  limit: number,
+  windowMs: number,
+  message = 'Muitas tentativas. Aguarde alguns minutos.',
+) {
   const counts = new Map<string, { count: number; until: number }>()
   return (req: Request, res: Response, next: NextFunction) => {
     const now = Date.now(),
@@ -12,9 +17,7 @@ export function rateLimit(limit: number, windowMs: number) {
       if (row.count > limit)
         return res
           .status(429)
-          .json({
-            error: { message: 'Muitas tentativas. Aguarde alguns minutos.' },
-          })
+          .json({ message, error: { message } })
     } else counts.set(key, { count: 1, until: now + windowMs })
     next()
   }

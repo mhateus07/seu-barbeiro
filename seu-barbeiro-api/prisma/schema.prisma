@@ -14,6 +14,8 @@ model Admin {
   barberId     String?
   isActive     Boolean  @default(true)
   passwordHash String
+  // Sobe a cada troca de senha ou desativação: tokens antigos deixam de valer.
+  tokenVersion Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -565,4 +567,20 @@ model PixCharge {
 
   @@index([status, expiresAt])
   @@map("pix_charges")
+}
+
+// ─── REGISTRO DE AÇÕES SENSÍVEIS (LGPD) ──────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  // Quem fez; nulo em ações sem login (ex.: bloqueio de tentativas).
+  adminId   String?
+  action    String
+  entity    String?
+  entityId  String?
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("audit_logs")
 }

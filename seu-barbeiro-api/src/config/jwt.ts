@@ -5,6 +5,8 @@ interface TokenPayload {
   sub: string
   email: string
   salon: string
+  // Versão da sessão do usuário (admins.tokenVersion); tokens antigos não têm.
+  ver?: number
 }
 
 export function signToken(payload: TokenPayload): string {

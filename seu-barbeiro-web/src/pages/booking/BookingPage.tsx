@@ -898,12 +898,23 @@ export function BookingPage() {
                 </button>
               )}
             </div>
+            {step === 5 && (
+              <p className="mt-3 text-center text-xs leading-relaxed text-zinc-500">
+                Seu nome e telefone ficam com o salão para o agendamento e os lembretes no WhatsApp.{' '}
+                <a href="/privacidade" target="_blank" className="underline underline-offset-2 hover:text-zinc-300">
+                  Política de privacidade
+                </a>
+              </p>
+            )}
           </>
         )}
       </div>
 
-      <footer className="mx-auto flex max-w-2xl items-center justify-center gap-2 px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-6 text-xs text-zinc-500">
-        Agendamento online por Seu Barbeiro
+      <footer className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-x-3 gap-y-1 px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-6 text-xs text-zinc-500">
+        <span>Agendamento online por Seu Barbeiro</span>
+        <a href="/privacidade" className="underline underline-offset-2 hover:text-zinc-300">
+          Privacidade
+        </a>
       </footer>
     </div>
   )

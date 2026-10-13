@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { prisma, currentSalon } from '../../lib/prisma'
 import { AuthRequest, allowRoles } from '../../middlewares/auth.middleware'
 import { hashPassword } from '../../utils/bcrypt'
+import { audit } from '../../utils/audit'
 import {
   runSchedule,
   assertAvailability,
@@ -29,6 +30,20 @@ router.get('/identity', async (_req, res) => {
     address: s.shop_address,
   })
 })
+// Registro de ações sensíveis, para o dono conferir quem fez o quê.
+router.get('/audit', owner, async (req, res) => {
+  const page = z.coerce.number().int().min(1).default(1).parse(req.query.page)
+  const [rows, admins] = await Promise.all([
+    prisma.auditLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * 50,
+      take: 50,
+    }),
+    prisma.admin.findMany({ select: { id: true, name: true } }),
+  ])
+  const names = new Map(admins.map((a) => [a.id, a.name]))
+  res.json(rows.map((r) => ({ ...r, adminName: r.adminId ? names.get(r.adminId) ?? null : null })))
+})
 router.get('/users', owner, async (_req, res) => {
   res.json(
     await prisma.admin.findMany({
@@ -43,7 +58,7 @@ router.get('/users', owner, async (_req, res) => {
     }),
   )
 })
-router.post('/users', owner, async (req, res) => {
+router.post('/users', owner, async (req: AuthRequest, res) => {
   const data = z
     .object({
       name: z.string().min(2),
@@ -64,6 +79,13 @@ router.post('/users', owner, async (req, res) => {
     data: { ...fields, passwordHash: await hashPassword(password) },
     select: { id: true, name: true, email: true, role: true },
   })
+  await audit({
+    adminId: req.adminId,
+    action: 'user.create',
+    entity: 'admin',
+    entityId: user.id,
+    details: { role: user.role },
+  })
   res.status(201).json(user)
 })
 router.patch('/users/:id', owner, async (req: AuthRequest, res) => {
@@ -75,18 +97,28 @@ router.patch('/users/:id', owner, async (req: AuthRequest, res) => {
     .parse(req.body)
   if (req.params.id === req.adminId && data.isActive === false)
     throw new Error('Não é possível desativar seu próprio acesso')
-  res.json(
-    await prisma.admin.update({
-      where: { id: req.params.id },
-      data: {
-        isActive: data.isActive,
-        ...(data.password
-          ? { passwordHash: await hashPassword(data.password) }
-          : {}),
-      },
-      select: { id: true, isActive: true },
-    }),
-  )
+  const user = await prisma.admin.update({
+    where: { id: req.params.id },
+    data: {
+      isActive: data.isActive,
+      ...(data.password
+        ? { passwordHash: await hashPassword(data.password) }
+        : {}),
+      // Senha nova ou acesso desativado derrubam as sessões abertas.
+      ...(data.password || data.isActive === false
+        ? { tokenVersion: { increment: 1 } }
+        : {}),
+    },
+    select: { id: true, isActive: true },
+  })
+  await audit({
+    adminId: req.adminId,
+    action: 'user.update',
+    entity: 'admin',
+    entityId: req.params.id,
+    details: { isActive: data.isActive, passwordChanged: !!data.password },
+  })
+  res.json(user)
 })
 
 router.post('/visits', staff, async (req, res) => {
@@ -293,6 +325,12 @@ router.get('/clients/:id/records', async (req: AuthRequest, res) => {
     }))
   )
     return res.sendStatus(403)
+  await audit({
+    adminId: req.adminId,
+    action: 'client.records.view',
+    entity: 'client',
+    entityId: req.params.id,
+  })
   res.json(
     await prisma.technicalRecord.findMany({
       where: { clientId: req.params.id },

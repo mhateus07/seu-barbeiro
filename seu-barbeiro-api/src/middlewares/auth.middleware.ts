@@ -27,6 +27,8 @@ export async function authMiddleware(
     if (payload.salon !== currentSalon().slug) throw new Error('Salão inválido')
     const user = await prisma.admin.findUnique({ where: { id: payload.sub } })
     if (!user || !user.isActive) throw new Error('Usuário inativo')
+    // Senha trocada ou acesso reativado: as sessões anteriores deixam de valer.
+    if ((payload.ver ?? 0) !== user.tokenVersion) throw new Error('Sessão encerrada')
     req.role = user.role
     req.barberId = user.barberId ?? undefined
     req.adminId = payload.sub

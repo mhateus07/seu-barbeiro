@@ -25,6 +25,7 @@ process.env.DEFAULT_SALON = 'alpha'
 process.env.PUBLIC_WEB_URL = 'http://localhost:5173'
 process.env.TZ = 'America/Sao_Paulo'
 process.env.NODE_ENV = 'test'
+process.env.PUBLIC_BOOKING_LIMIT = '100000'
 for (const value of [urlA, urlB])
   execFileSync(
     process.execPath,

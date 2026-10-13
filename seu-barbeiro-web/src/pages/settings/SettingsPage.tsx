@@ -12,16 +12,18 @@ import {
   Send,
   Loader2,
   QrCode,
+  ShieldCheck,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { isAxiosError } from 'axios'
 import { PaymentsTab } from './PaymentsTab'
+import { SecurityTab } from './SecurityTab'
 import { getSettings, updateSettings } from '../../api/settings.api'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Spinner } from '../../components/ui/Spinner'
 
-type Tab = 'info' | 'hours' | 'loyalty' | 'whatsapp' | 'payments'
+type Tab = 'info' | 'hours' | 'loyalty' | 'whatsapp' | 'payments' | 'security'
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'info', label: 'Informações', icon: Settings },
@@ -29,6 +31,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'loyalty', label: 'Fidelidade', icon: Star },
   { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
   { id: 'payments', label: 'Pix e cliente', icon: QrCode },
+  { id: 'security', label: 'Segurança', icon: ShieldCheck },
 ]
 
 const DAYS = [
@@ -364,17 +367,17 @@ function LoyaltyTab({
           <p className="font-medium text-amber-800">Resumo do programa:</p>
           <ul className="mt-1.5 space-y-1 text-amber-700 text-xs">
             <li>
-              ✅ Cliente ganha{' '}
+              Cliente ganha{' '}
               <strong>{form.loyalty_points_per_visit} pontos</strong> por
               atendimento
             </li>
             <li>
-              🎁 A cada <strong>{form.loyalty_redemption_points} pontos</strong>{' '}
+              A cada <strong>{form.loyalty_redemption_points} pontos</strong>{' '}
               acumulados, pode resgatar{' '}
               <strong>R$ {form.loyalty_redemption_value}</strong>
             </li>
             <li>
-              💰 Cada ponto equivale a <strong>R$ {redemptionRatio}</strong>
+              Cada ponto equivale a <strong>R$ {redemptionRatio}</strong>
             </li>
           </ul>
         </div>
@@ -402,7 +405,8 @@ function WhatsAppTab({
   const [form, setForm] = useState({
     whatsapp_enabled: settings.whatsapp_enabled ?? 'false',
     whatsapp_api_url: settings.whatsapp_api_url ?? '',
-    whatsapp_api_key: settings.whatsapp_api_key ?? '',
+    // A chave nunca volta do servidor; em branco mantém a que já está salva.
+    whatsapp_api_key: '',
     whatsapp_instance: settings.whatsapp_instance ?? '',
     whatsapp_reminder_hours: settings.whatsapp_reminder_hours ?? '24',
   })
@@ -524,7 +528,11 @@ function WhatsAppTab({
               onChange={(e) =>
                 setForm({ ...form, whatsapp_api_key: e.target.value })
               }
-              placeholder="sua-chave-secreta"
+              placeholder={
+                settings.whatsapp_api_key_set === 'true'
+                  ? 'Salva. Em branco para manter'
+                  : 'sua-chave-secreta'
+              }
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -563,7 +571,12 @@ function WhatsAppTab({
       </div>
 
       <div className="flex justify-end">
-        <Button onClick={() => onSave(form)}>
+        <Button
+          onClick={() => {
+            const { whatsapp_api_key, ...rest } = form
+            onSave(whatsapp_api_key ? form : rest)
+          }}
+        >
           <Save className="h-4 w-4 mr-1.5" />
           Salvar WhatsApp
         </Button>
@@ -738,6 +751,7 @@ export function SettingsPage() {
             onSave={(data) => saveMutation.mutate(data)}
           />
         )}
+        {activeTab === 'security' && <SecurityTab />}
         {activeTab === 'whatsapp' && (
           <WhatsAppTab
             settings={s}

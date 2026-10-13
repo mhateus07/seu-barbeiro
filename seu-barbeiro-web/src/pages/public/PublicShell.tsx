@@ -16,7 +16,10 @@ export function PublicShell({ title, children }: { title?: string; children: Rea
       </header>
       <main className="mx-auto w-full max-w-lg flex-1 animate-pop-in px-5 py-8">{children}</main>
       <footer className="flex items-center justify-center gap-2 px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4 text-xs text-zinc-500">
-        Feito com Seu Barbeiro
+        <span>Feito com Seu Barbeiro</span>
+        <a href="/privacidade" className="underline underline-offset-2 hover:text-espuma">
+          Privacidade
+        </a>
       </footer>
     </div>
   )

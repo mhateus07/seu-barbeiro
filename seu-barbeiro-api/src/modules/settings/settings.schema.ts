@@ -46,4 +46,4 @@ export const SETTING_DEFAULTS: Record<string, string> = {
 }
 
 /** Configurações que só o servidor lê; o painel recebe apenas se estão preenchidas. */
-export const SECRET_SETTINGS = ['mp_access_token']
+export const SECRET_SETTINGS = ['mp_access_token', 'whatsapp_api_key']

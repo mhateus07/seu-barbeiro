@@ -219,6 +219,23 @@ async function bookPublicAppointment(data: {
     let client = matches[0]
       ? await tx.client.findUnique({ where: { id: matches[0].id } })
       : null
+    // Quem digita o telefone de outra pessoa não consegue encher a agenda em
+    // nome dela: pelo site, cada cliente tem no máximo 3 horários em aberto
+    // (os marcados pela recepção não contam).
+    if (
+      client &&
+      (await tx.appointment.count({
+        where: {
+          clientId: client.id,
+          source: 'ONLINE',
+          status: { in: ['SCHEDULED', 'CONFIRMED'] },
+          startsAt: { gt: new Date() },
+        },
+      })) >= 3
+    )
+      throw new Error(
+        'Este telefone já tem horários marcados. Para marcar outro, fale com o salão.',
+      )
     if (!client)
       client = await tx.client.create({
         data: {

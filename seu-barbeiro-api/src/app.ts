@@ -76,6 +76,15 @@ app.get('/health', (_req, res) =>
   res.json({ ok: true, time: new Date().toISOString() }),
 )
 app.use('/api/v1/auth', rateLimit(30, 60000), authRoutes)
+// Agendamentos e lista de espera pelo site: no máximo 10 por hora por aparelho,
+// para ninguém lotar a agenda do salão com horários falsos.
+const publicBookingLimit = rateLimit(
+  Number(process.env.PUBLIC_BOOKING_LIMIT ?? 10),
+  3600000,
+  'Muitos agendamentos seguidos deste aparelho. Fale com o salão pelo WhatsApp.',
+)
+app.post('/api/v1/public/appointments', publicBookingLimit)
+app.post('/api/v1/public/waitlist', publicBookingLimit)
 app.use('/api/v1/public', rateLimit(120, 60000), publicRoutes)
 
 // Rotas protegidas

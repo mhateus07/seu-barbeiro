@@ -11,7 +11,10 @@ import {
   getClientAppointments,
   getClientLoyalty,
   redeemLoyaltyPoints,
+  exportClientData,
+  anonymizeClient,
 } from './clients.service'
+import { audit } from '../../utils/audit'
 
 export async function list(req: AuthRequest, res: Response) {
   const { search, page = '1', limit = '20', withLoyalty } = req.query as Record<string, string>
@@ -48,6 +51,7 @@ export async function update(req: AuthRequest, res: Response) {
 export async function remove(req: AuthRequest, res: Response) {
   try {
     await deleteClient(req.params.id)
+    await audit({ adminId: req.adminId, action: 'client.delete', entity: 'client', entityId: req.params.id })
     return success(res, { message: 'Cliente removido com sucesso' })
   } catch (err) {
     return apiError(res, (err as Error).message, 400)
@@ -75,6 +79,30 @@ export async function redeemLoyalty(req: AuthRequest, res: Response) {
     const { points } = req.body
     if (!points || points <= 0) return apiError(res, 'Informe a quantidade de pontos a resgatar', 400)
     return success(res, await redeemLoyaltyPoints(req.params.id, Number(points)))
+  } catch (err) {
+    return apiError(res, (err as Error).message, 400)
+  }
+}
+
+// Pedidos do titular (LGPD). Só o dono do salão atende.
+export async function exportData(req: AuthRequest, res: Response) {
+  if (req.role !== 'OWNER') return apiError(res, 'Só o dono do salão pode exportar dados de clientes', 403)
+  try {
+    const data = await exportClientData(req.params.id)
+    await audit({ adminId: req.adminId, action: 'client.export', entity: 'client', entityId: req.params.id })
+    res.setHeader('Content-Disposition', `attachment; filename="dados-cliente-${req.params.id.slice(0, 8)}.json"`)
+    return success(res, data)
+  } catch (err) {
+    return apiError(res, (err as Error).message, 404)
+  }
+}
+
+export async function anonymize(req: AuthRequest, res: Response) {
+  if (req.role !== 'OWNER') return apiError(res, 'Só o dono do salão pode remover dados de clientes', 403)
+  try {
+    await anonymizeClient(req.params.id)
+    await audit({ adminId: req.adminId, action: 'client.anonymize', entity: 'client', entityId: req.params.id })
+    return success(res, { message: 'Dados pessoais removidos' })
   } catch (err) {
     return apiError(res, (err as Error).message, 400)
   }

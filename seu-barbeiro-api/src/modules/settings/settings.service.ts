@@ -1,17 +1,21 @@
 import { prisma } from '../../lib/prisma'
-import { SETTING_DEFAULTS, UpdateSettingsInput } from './settings.schema'
+import { SECRET_SETTINGS, SETTING_DEFAULTS, UpdateSettingsInput } from './settings.schema'
+import { decryptSecret, encryptSecret, isEncrypted } from '../../utils/secrets'
 
 export async function getSettings(
   db: Pick<typeof prisma, 'settings'> = prisma,
 ): Promise<Record<string, string>> {
   const rows = await db.settings.findMany()
-  const stored = Object.fromEntries(rows.map((r) => [r.key, r.value]))
+  const stored = Object.fromEntries(
+    rows.map((r) => [r.key, SECRET_SETTINGS.includes(r.key) ? decryptSecret(r.value) : r.value]),
+  )
   // Merge com defaults: database tem prioridade
   return { ...SETTING_DEFAULTS, ...stored }
 }
 
 export async function getSetting(key: string): Promise<string> {
   const row = await prisma.settings.findUnique({ where: { key } })
+  if (row && SECRET_SETTINGS.includes(key)) return decryptSecret(row.value)
   return row?.value ?? SETTING_DEFAULTS[key] ?? ''
 }
 
@@ -57,13 +61,25 @@ export async function updateSettings(
     if (key === 'mp_access_token' && value && !/^(APP_USR|TEST)-[\w-]{20,}$/.test(value))
       throw new Error('Token do Mercado Pago inválido. Use o "Access Token" de produção.')
   }
-  const ops = Object.entries(input.settings).map(([key, value]) =>
-    prisma.settings.upsert({
+  const ops = Object.entries(input.settings).map(([key, raw]) => {
+    const value = SECRET_SETTINGS.includes(key) ? encryptSecret(raw) : raw
+    return prisma.settings.upsert({
       where: { key },
       create: { key, value },
       update: { value },
-    }),
-  )
+    })
+  })
   await prisma.$transaction(ops)
   return getSettings()
+}
+
+/** Cifra segredos gravados antes da cifragem existir (roda uma vez por início). */
+export async function encryptStoredSecrets() {
+  const rows = await prisma.settings.findMany({ where: { key: { in: SECRET_SETTINGS } } })
+  for (const row of rows)
+    if (row.value && !isEncrypted(row.value))
+      await prisma.settings.update({
+        where: { key: row.key },
+        data: { value: encryptSecret(row.value) },
+      })
 }

@@ -33,3 +33,14 @@ export async function redeemLoyaltyPoints(clientId: string, points: number): Pro
   const { data } = await api.post(`/clients/${clientId}/loyalty/redeem`, { points })
   return data.data
 }
+
+/** Baixa tudo o que o salão guarda sobre o cliente (pedido do titular, LGPD). */
+export async function exportClientData(clientId: string): Promise<unknown> {
+  const { data } = await api.get(`/clients/${clientId}/export`)
+  return data.data
+}
+
+/** Remove nome, telefone, e-mail e fichas; mantém atendimentos e valores. */
+export async function anonymizeClient(clientId: string): Promise<void> {
+  await api.post(`/clients/${clientId}/anonymize`)
+}
