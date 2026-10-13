@@ -97,4 +97,4 @@ async function token() {
 function tomorrowAt(h, m) {
   const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(h, m, 0, 0); return d
 }
-module.exports = { chromium, startRec, encode, CURSOR_JS, moveTo, clickSmooth, typeSlow, token, tomorrowAt, wait, sleep, WEB, SLOW }
+module.exports = { chromium, startRec, encode, CURSOR_JS, moveTo, clickSmooth, typeSlow, token, tomorrowAt, wait, sleep, WEB, API, SLOW }

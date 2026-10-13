@@ -1,6 +1,8 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/archivo/wdth.css';
-@import '@fontsource-variable/hanken-grotesk';
+@import '@fontsource/ibm-plex-sans/latin-400.css';
+@import '@fontsource/ibm-plex-sans/latin-500.css';
+@import '@fontsource/ibm-plex-sans/latin-600.css';
+@import '@fontsource/ibm-plex-sans/latin-700.css';
 @import '@fontsource/ibm-plex-mono/400.css';
 @import '@fontsource/ibm-plex-mono/500.css';
 
@@ -23,8 +25,8 @@
   O tema escuro do painel remapeia as escalas dentro de `.app-surface`.
 */
 @theme {
-  --font-sans: 'Hanken Grotesk Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-display: 'Archivo Variable', 'Arial Narrow', system-ui, sans-serif;
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
   --color-navalha: #15233f;
@@ -159,17 +161,16 @@
     color: var(--color-zinc-900);
   }
 
-  /* Archivo largo (112), como letreiro de fachada. */
+  /* Títulos na mesma família do texto, só mais pesados e mais justos. */
   h1,
   h2,
   h3,
   .font-display {
     font-family: var(--font-display);
-    font-stretch: 112%;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
   }
   h1 {
-    font-weight: 760;
+    font-weight: 600;
   }
 
   button:not(:disabled),

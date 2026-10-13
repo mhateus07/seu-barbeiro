@@ -40,7 +40,10 @@ async function tap(page, loc, ms = 650) { await reveal(page, loc); await R.click
   const d = new Date(); d.setDate(d.getDate() + 1)
   await date.fill(d.toLocaleDateString('sv-SE'))
   await R.wait(1300)
-  await tap(page, page.getByRole('button', { name: '18:30', exact: true }))
+  // Fim da tarde, se estiver livre nos dados de demonstração; senão, o último horário livre.
+  const late = page.getByRole('button', { name: '18:30', exact: true })
+  const slot = (await late.count()) ? late : page.getByRole('button', { name: /^\d{2}:\d{2}$/ }).last()
+  await tap(page, slot)
   await R.wait(700)
   await tap(page, page.getByRole('button', { name: /Continuar/ }))
   await R.wait(500); await toTop(page); await R.wait(400)
