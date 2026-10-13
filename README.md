@@ -170,11 +170,13 @@ reconstrói e sobe os containers e espera o app ficar saudável. Na primeira ins
 
 `scripts/backup.sh` copia todos os bancos (`pg_dumpall`), cifra com AES-256 usando
 `BACKUP_PASSPHRASE` e guarda os 14 mais recentes em `backups/`. Roda em cada deploy
-e todo dia às 03:30 pelo cron (`/etc/cron.d/seu-barbeiro-backup`, instalado pelo
+e todo dia às 03:45 pelo cron (`/etc/cron.d/seu-barbeiro-backup`, instalado pelo
 `deploy.sh`). **Guarde a `BACKUP_PASSPHRASE` fora da VPS**: sem ela nenhum backup
-abre. Para ter cópia fora do servidor, instale e configure o `rclone` na VPS e
-defina `BACKUP_REMOTE` no `.env` (ex.: `drive:seu-barbeiro`); as cópias de lá com
-mais de 60 dias são apagadas. A restauração está no topo do script.
+abre (para copiá-la sem mostrar na tela: `sh scripts/copiar-chave-backup.sh`).
+A cópia cifrada vai para o Google Drive pelo `rclone` já configurado na VPS
+(remoto `gdrive:`, o mesmo do Pedeli e do AmigoFit), na pasta
+`seu-barbeiro-backups`; outra pasta pode ser escolhida com `BACKUP_REMOTE`. No
+Drive ficam 60 dias. A restauração está no topo do script.
 
 ### Segurança e LGPD
 

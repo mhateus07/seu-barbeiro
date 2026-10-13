@@ -90,8 +90,9 @@ EOF
   echo "  → Backup do banco (cifrado)..."
   bash scripts/backup.sh
 
-  # Backup diário às 03:30 (hora do servidor), além do feito em cada deploy.
-  printf '30 3 * * * root cd %s && bash scripts/backup.sh >> /var/log/seu-barbeiro-backup.log 2>&1\n' \
+  # Backup diário às 03:45 (hora do servidor; 03:00, 03:15 e 03:30 são dos
+  # outros sistemas da VPS), além do feito em cada deploy.
+  printf '45 3 * * * root cd %s && bash scripts/backup.sh >> /var/log/seu-barbeiro-backup.log 2>&1\n' \
     "$REMOTE_DIR" > /etc/cron.d/seu-barbeiro-backup
   chmod 644 /etc/cron.d/seu-barbeiro-backup
 

@@ -6,8 +6,9 @@
 # - cifrado com AES-256 (openssl, PBKDF2) usando BACKUP_PASSPHRASE do .env.
 #   Sem essa frase o arquivo não abre: guarde uma cópia dela FORA da VPS;
 # - mantém os últimos 14 na VPS (backups/);
-# - se BACKUP_REMOTE estiver no .env (ex.: "drive:seu-barbeiro") e o rclone
-#   estiver configurado, envia a cópia para fora e apaga lá as de mais de 60 dias.
+# - envia a cópia (já cifrada) para o Google Drive pelo rclone, no mesmo
+#   remoto "gdrive:" do Pedeli e do AmigoFit (pasta seu-barbeiro-backups, ou
+#   BACKUP_REMOTE no .env) e apaga lá as de mais de 60 dias.
 #
 # Restaurar (num Postgres vazio):
 #   openssl enc -d -aes-256-cbc -pbkdf2 -pass env:BACKUP_PASSPHRASE -in ARQUIVO.sql.gz.enc \
@@ -18,6 +19,7 @@ cd "$(dirname "$0")/.."
 env_value() { grep -E "^$1=" .env | tail -1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//'; }
 export BACKUP_PASSPHRASE="$(env_value BACKUP_PASSPHRASE)"
 REMOTE="$(env_value BACKUP_REMOTE || true)"
+REMOTE="${REMOTE:-gdrive:seu-barbeiro-backups}"
 if [ -z "$BACKUP_PASSPHRASE" ]; then
   echo "BACKUP_PASSPHRASE não está no .env; rode o deploy.sh para gerar." >&2
   exit 1
@@ -42,14 +44,10 @@ ls -1t backups/*.sql.gz.enc 2>/dev/null | tail -n +15 | xargs -r rm -f
 # Backups antigos, sem cifra, de antes de 13/10/2026.
 ls -1t backups/*.sql.gz 2>/dev/null | xargs -r rm -f
 
-if [ -n "$REMOTE" ]; then
-  if command -v rclone > /dev/null; then
-    rclone copy "$FILE" "$REMOTE" && echo "Enviado para $REMOTE"
-    rclone delete "$REMOTE" --min-age 60d --include '*.sql.gz.enc' || true
-  else
-    echo "BACKUP_REMOTE configurado, mas o rclone não está instalado." >&2
-    exit 1
-  fi
+if command -v rclone > /dev/null && rclone listremotes | grep -q "^${REMOTE%%:*}:$"; then
+  rclone copy "$FILE" "$REMOTE/"
+  rclone delete "$REMOTE/" --min-age 60d --include 'seu-barbeiro-*.sql.gz.enc' || true
+  echo "Cópia cifrada enviada para $REMOTE"
 else
-  echo "Aviso: sem BACKUP_REMOTE, a cópia fica só nesta VPS." >&2
+  echo "AVISO: destino $REMOTE indisponível; o backup só existe nesta VPS." >&2
 fi
