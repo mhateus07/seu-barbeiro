@@ -12,6 +12,7 @@ O que está feito, o que falta e as ideias deste produto ficam nas **Issues dest
 - **Ao concluir:** referencie a issue no commit ou no PR com `Closes #N` (ela fecha sozinha e o cartão vai para Feito). Trabalho parcial: comente na issue o que foi feito e o que falta.
 - **Pendência descoberta no caminho:** crie uma issue `tarefa`. Se ela impede vender ou fazer piloto, adicione `bloqueia-venda` e o marco "🎯 Primeira venda".
 - **Ideia que o Mateus mencionar na conversa:** crie uma issue `ideia` com o título começando por "💡".
+- **Colunas do quadro (em português):** "A fazer", "Fazendo", "Feito" e "💡 Ideias". Issue `ideia` vai para "💡 Ideias"; ao começar uma tarefa, mova o cartão para "Fazendo" (`gh project item-edit` no campo Status). Fechar a issue leva o cartão para "Feito" sozinho.
 - **Toda issue nova entra no quadro:**
   `gh project item-add "$(gh project list --owner mhateus07 --format json --jq '.projects[] | select(.title=="Seu Barbeiro") | .number')" --owner mhateus07 --url <url-da-issue>`
   Se der erro de permissão, peça ao Mateus para rodar uma vez `gh auth refresh -s project`.
