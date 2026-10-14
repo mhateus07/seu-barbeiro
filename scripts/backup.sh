@@ -40,9 +40,11 @@ docker compose exec -T postgres pg_dumpall -U seubarbeiro --clean --if-exists < 
 openssl enc -d -aes-256-cbc -pbkdf2 -pass env:BACKUP_PASSPHRASE -in "$FILE" | gunzip -t
 echo "Backup: $FILE ($(du -h "$FILE" | cut -f1))"
 
-ls -1t backups/*.sql.gz.enc 2>/dev/null | tail -n +15 | xargs -r rm -f
+# `|| true`: sem arquivo para o padrão, o ls falha e o pipefail pararia o
+# script antes de enviar a cópia para o Drive.
+ls -1t backups/*.sql.gz.enc 2>/dev/null | tail -n +15 | xargs -r rm -f || true
 # Backups antigos, sem cifra, de antes de 13/10/2026.
-ls -1t backups/*.sql.gz 2>/dev/null | xargs -r rm -f
+ls -1t backups/*.sql.gz 2>/dev/null | xargs -r rm -f || true
 
 if command -v rclone > /dev/null && rclone listremotes | grep -q "^${REMOTE%%:*}:$"; then
   rclone copy "$FILE" "$REMOTE/"
