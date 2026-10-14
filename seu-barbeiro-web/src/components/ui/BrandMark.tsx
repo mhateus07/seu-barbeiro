@@ -31,10 +31,26 @@ export function BrandMark({
   )
 }
 
-/** Só o nome "Seu Barbeiro", desenhado. A altura vem da classe (`h-*`). */
-export function BrandWordmark({ className = 'h-5', negative }: { className?: string; negative?: boolean }) {
+/**
+ * Só o nome "Seu Barbeiro", desenhado. A altura vem da classe (`h-*`); com
+ * `fluid`, a largura vem da classe e a altura acompanha.
+ */
+export function BrandWordmark({
+  className = 'h-5',
+  negative,
+  fluid,
+}: {
+  className?: string
+  negative?: boolean
+  fluid?: boolean
+}) {
   return (
-    <svg viewBox="0 0 253.24 27.92" role="img" aria-label="Seu Barbeiro" className={`w-auto shrink-0 ${className}`}>
+    <svg
+      viewBox="0 0 253.24 27.92"
+      role="img"
+      aria-label="Seu Barbeiro"
+      className={`${fluid ? 'h-auto' : 'w-auto'} shrink-0 ${className}`}
+    >
       <path d={WORDMARK} fill={negative ? ESPUMA : NAVALHA} transform="translate(0 27.92)" />
     </svg>
   )
