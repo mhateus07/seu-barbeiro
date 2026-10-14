@@ -1,0 +1,15 @@
+body { width: 1080px; height: 1350px; overflow: hidden; position: relative; }
+.pad { position: absolute; inset: 0; padding: 88px; }
+.logo { height: 44px; display: block; }
+h1 { font-size: 76px; line-height: 1.04; letter-spacing: -0.025em; margin-top: 76px; }
+.sub { font-size: 30px; line-height: 1.4; margin-top: 24px; color: var(--muted); max-width: 860px; }
+.cap { font-size: 20px; margin-top: 14px; gap: 12px; }
+.foot { position: absolute; left: 88px; right: 88px; bottom: 72px; display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid var(--line); padding-top: 22px; }
+.foot .cta { font-size: 24px; font-weight: 600; }
+.foot .site { font-family: 'Plex Mono'; font-weight: 500; font-size: 22px; margin-top: 4px; color: var(--muted); }
+.foot .av { font-size: 17px; color: #8a8f99; }
+.dark { background: var(--navalha); color: var(--espuma); }
+.dark .sub { color: rgba(245,244,240,.72); }
+.dark .foot { border-color: var(--line-dark); }
+.dark .foot .site { color: var(--toalha); }
+.dark .foot .av { color: rgba(245,244,240,.5); }

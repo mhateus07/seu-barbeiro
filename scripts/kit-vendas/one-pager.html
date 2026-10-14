@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Seu Barbeiro — one-pager</title>
+<link rel="stylesheet" href="base.css">
+<style>
+@page { size: 210mm 297mm; margin: 0; }
+body { width: 794px; height: 1123px; overflow: hidden; position: relative; background: var(--espuma); }
+
+.top { background: var(--navalha); color: var(--espuma); height: 420px; padding: 34px 48px 0; }
+.brand { display: flex; justify-content: space-between; align-items: center; }
+.brand img { height: 30px; display: block; }
+.brand span { font-size: 11px; color: rgba(245,244,240,.6); }
+.top h1 { font-size: 35px; line-height: 1.1; margin-top: 30px; max-width: 520px; }
+.top p.sub { font-size: 13.5px; line-height: 1.5; color: rgba(245,244,240,.76); margin-top: 12px; max-width: 520px; }
+.chips { display: flex; gap: 8px; margin-top: 18px; }
+.chips span { font-size: 11.5px; font-weight: 500; border: 1px solid rgba(245,244,240,.24); border-radius: 6px; padding: 6px 11px; }
+
+.shots { position: absolute; left: 48px; right: 48px; top: 286px; display: flex; justify-content: space-between; align-items: flex-start; }
+.shots .desk { width: 446px; }
+.shots .cel { width: 164px; }
+.shots .shot { box-shadow: 0 1px 0 rgba(21,35,63,.04); }
+.shots .cel .shot { border-color: rgba(21,35,63,.3); }
+.shots .cap { margin-top: 9px; line-height: 1.35; }
+
+.body { position: absolute; left: 48px; right: 48px; top: 686px; }
+.body h2 { font-size: 18px; }
+.feat { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; margin-top: 8px; list-style: none; }
+.feat li { font-size: 11.6px; padding: 4px 0 4px 18px; position: relative; border-bottom: 1px solid var(--line); }
+.feat li::before { content: ''; position: absolute; left: 1px; top: 8px; width: 9px; height: 5px; border-left: 1.6px solid var(--navalha); border-bottom: 1.6px solid var(--navalha); transform: rotate(-45deg); }
+
+.steps { position: absolute; left: 48px; right: 48px; top: 872px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.steps h2 { grid-column: 1 / -1; font-size: 14px; margin-bottom: -6px; }
+.step { border-top: 1.5px solid var(--navalha); padding-top: 7px; }
+.step b { font-family: 'Plex Mono'; font-weight: 500; font-size: 10.5px; color: var(--muted); }
+.step h3 { font-size: 12.5px; margin-top: 2px; }
+.step p { font-size: 10.5px; line-height: 1.38; color: var(--muted); margin-top: 2px; }
+
+.aviso { position: absolute; right: 48px; bottom: 124px; font-size: 9.5px; color: #8a8f99; }
+
+.cta { position: absolute; left: 0; right: 0; bottom: 0; height: 112px; background: var(--navalha); color: var(--espuma); padding: 0 48px; display: flex; align-items: center; gap: 28px; }
+.cta .txt { flex: 1; }
+.cta h2 { font-size: 20px; line-height: 1.2; }
+.cta .ct { display: flex; gap: 30px; margin-top: 11px; }
+.cta .ct span { display: block; font-size: 9.5px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--toalha); }
+.cta .ct b { font-family: 'Plex Mono'; font-weight: 500; font-size: 14.5px; }
+.cta .qr { background: var(--espuma); padding: 6px; border-radius: 6px; width: 76px; height: 76px; }
+.cta .qr img { width: 100%; height: 100%; display: block; }
+.cta .qrl { font-size: 9.5px; color: rgba(245,244,240,.6); text-align: center; margin-top: 5px; }
+</style></head>
+<body>
+<section class="top">
+  <div class="brand"><img src="assets/seu-barbeiro-horizontal-negativo.svg" alt="Seu Barbeiro"><span>Impulsio Digital · Juiz de Fora (MG)</span></div>
+  <h1>Agenda, clientes e caixa da barbearia no mesmo sistema.</h1>
+  <p class="sub">Para barbearias e salões com 2 a 6 profissionais. O cliente marca pelo link, cada barbeiro vê a própria agenda e, no fim do dia, o caixa e a comissão já estão na conta.</p>
+  <div class="chips"><span>Cliente marca sozinho, sem baixar app</span><span>Comissão e vales calculados</span><span>Caixa conferido no fechamento</span></div>
+</section>
+
+<div class="shots">
+  <div class="desk">
+    <div class="shot"><img src="assets/agenda-3col.jpg"></div>
+    <div class="cap"><b>Painel</b><span>Agenda do dia: uma coluna por barbeiro e a linha da hora atual.</span></div>
+  </div>
+  <div class="cel">
+    <div class="shot"><img src="assets/20-celular.jpg"></div>
+    <div class="cap"><b>Celular</b><span>O cliente marca pelo link, sem baixar app.</span></div>
+  </div>
+</div>
+
+<div class="body">
+  <h2>Muito mais que uma agenda</h2>
+  <ul class="feat">
+    <li>Agenda por barbeiro, por dia e por semana</li>
+    <li>Comanda com serviços, produtos e desconto</li>
+    <li>Agendamento online pelo link da barbearia</li>
+    <li>Caixa com troco, sangria e conferência</li>
+    <li>Cliente confirma, remarca ou cancela pelo link</li>
+    <li>Comissão por barbeiro, com vales descontados</li>
+    <li>Bloqueio de almoço e intervalos na agenda</li>
+    <li>Receitas, despesas e contas a pagar</li>
+    <li>Ficha do cliente com histórico de visitas</li>
+    <li>Clube de assinatura com controle de usos</li>
+    <li>Lista de espera e clientes na hora de voltar</li>
+    <li>Acesso separado para dono, recepção e barbeiro</li>
+  </ul>
+</div>
+
+<div class="steps">
+  <h2>Como fica o dia a dia</h2>
+  <div class="step"><b>01</b><h3>O cliente marca</h3><p>Serviço, barbeiro e horário livre, pelo link.</p></div>
+  <div class="step"><b>02</b><h3>Cai na agenda</h3><p>Aparece na coluna do barbeiro escolhido.</p></div>
+  <div class="step"><b>03</b><h3>Comanda no balcão</h3><p>Serviço, produto e forma de pagamento.</p></div>
+  <div class="step"><b>04</b><h3>Fechamento</h3><p>Caixa conferido e comissão calculada.</p></div>
+</div>
+
+<div class="aviso">Telas com dados ilustrativos de uma barbearia-exemplo.</div>
+
+<section class="cta">
+  <div class="txt">
+    <h2>Veja o Seu Barbeiro com a agenda da sua barbearia.</h2>
+    <div class="ct">
+      <div><span>Agende uma demonstração</span><b>(32) 99857-8057</b></div>
+      <div><span>Site</span><b>seubarbeiro.impulsiodigital.com</b></div>
+    </div>
+  </div>
+  <div><div class="qr"><img src="assets/qr.svg"></div><div class="qrl">WhatsApp pelo QR</div></div>
+</section>
+</body></html>

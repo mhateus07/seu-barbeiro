@@ -1,0 +1,38 @@
+@font-face { font-family: 'Plex'; font-weight: 400; src: url(assets/IBMPlexSans-400.ttf); }
+@font-face { font-family: 'Plex'; font-weight: 500; src: url(assets/IBMPlexSans-500.ttf); }
+@font-face { font-family: 'Plex'; font-weight: 600; src: url(assets/IBMPlexSans-600.ttf); }
+@font-face { font-family: 'Plex Mono'; font-weight: 400; src: url(assets/IBMPlexMono-400.ttf); }
+@font-face { font-family: 'Plex Mono'; font-weight: 500; src: url(assets/IBMPlexMono-500.ttf); }
+@font-face { font-family: 'Plex Mono'; font-weight: 600; src: url(assets/IBMPlexMono-600.ttf); }
+
+/* Identidade Seu Barbeiro (guia de marca v2) */
+:root {
+  --navalha: #15233F;   /* logo, botões, faixas */
+  --espuma: #F5F4F0;    /* papel */
+  --toalha: #C9DAEE;    /* apoio suave */
+  --poste: #D8462A;     /* só a "linha da hora", com parcimônia */
+  --escuro: #0E1526;
+  --ink: #15233F;
+  --muted: #5A6273;
+  --line: #DEDCD4;
+  --line-dark: rgba(245, 244, 240, .16);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--espuma); color: var(--ink); font-family: 'Plex', sans-serif; -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { font-weight: 600; letter-spacing: -0.015em; }
+.mono { font-family: 'Plex Mono', monospace; }
+
+/* tela real: só borda fina e cantos de 8px, sem moldura de navegador */
+.shot { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; }
+.shot img { display: block; width: 100%; }
+.dark .shot { border-color: var(--line-dark); }
+
+/* legenda da tela: o que ela mostra */
+.cap { font-size: 11px; color: var(--muted); display: flex; gap: 8px; align-items: baseline; }
+.cap b { font-family: 'Plex Mono'; font-weight: 500; color: var(--ink); }
+.dark .cap { color: rgba(245,244,240,.62); }
+.dark .cap b { color: var(--espuma); }
+
+/* "linha da hora atual" — o único uso do Vermelho Poste */
+.hora { position: relative; height: 2px; background: var(--poste); }
+.hora::before { content: ''; position: absolute; left: -4px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--poste); }
