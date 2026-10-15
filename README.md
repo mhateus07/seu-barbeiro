@@ -142,7 +142,12 @@ faixa 9 0000-xxxx, que não é atribuída.
 # No servidor (dentro do container do app)
 docker compose exec -T app node scripts/demo-data.cjs criar        # só com o salão vazio
 docker compose exec -T app node scripts/demo-data.cjs limpar --sim # apaga tudo, menos acessos e configurações
+docker compose exec -T app node scripts/demo-data.cjs acessos --sim # troca todos os acessos pelos de demonstração
 ```
+
+`acessos --sim` apaga todos os acessos do salão e cria três de demonstração (dono,
+recepção e o profissional Diego Martins, em `@seubarbeiro.demo`) com senhas sorteadas,
+mostradas uma única vez no terminal. As sessões abertas deixam de valer.
 
 Rode `limpar --sim` antes de começar a usar o salão de verdade.
 

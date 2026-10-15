@@ -4,6 +4,8 @@
 //   node scripts/demo-data.cjs criar            → só roda com o salão sem clientes/atendimentos
 //   node scripts/demo-data.cjs limpar --sim     → apaga clientes, agenda, financeiro, planos etc.
 //                                                 (mantém acessos da equipe e configurações)
+//   node scripts/demo-data.cjs acessos --sim    → apaga TODOS os acessos e cria os de demonstração
+//                                                 (dono, recepção e profissional), com senhas novas
 //
 // Use SALAO=<slug> para escolher o salão quando houver mais de um.
 // Telefones usam o prefixo 9 0000-xxxx, faixa não atribuída, e o WhatsApp não é ligado.
@@ -56,6 +58,35 @@ async function limpar() {
   const linked = (await db.admin.findMany({ where: { barberId: { not: null } } })).map((a) => a.barberId)
   await db.barber.deleteMany({ where: { id: { notIn: linked } } })
   console.log(`Salão ${slug}: dados apagados (acessos e configurações mantidos).`)
+}
+
+async function acessos() {
+  if (!process.argv.includes('--sim'))
+    throw new Error('Confirme com: node scripts/demo-data.cjs acessos --sim')
+  const { hashPassword } = require('../dist/utils/bcrypt')
+  const professional = await db.barber.findFirst({ where: { name: 'Diego Martins' } })
+  if (!professional) throw new Error('Rode "criar" antes: o acesso de profissional usa o Diego Martins.')
+  // Senha legível para ditar numa demonstração, mas sorteada a cada execução.
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+  const password = () =>
+    `Demo-${Array.from(randomBytes(10), (b) => letters[b % letters.length]).join('').replace(/(.{5})/, '$1-')}`
+  const accounts = [
+    { name: 'Dono (demonstração)', email: 'dono@seubarbeiro.demo', role: 'OWNER' },
+    { name: 'Recepção (demonstração)', email: 'recepcao@seubarbeiro.demo', role: 'RECEPTION' },
+    { name: 'Diego Martins', email: 'diego@seubarbeiro.demo', role: 'PROFESSIONAL', barberId: professional.id },
+  ]
+  const created = []
+  await db.$transaction(async (tx) => {
+    await tx.pushSubscription.deleteMany({})
+    await tx.admin.deleteMany({})
+    for (const a of accounts) {
+      const pass = password()
+      await tx.admin.create({ data: { ...a, passwordHash: await hashPassword(pass) } })
+      created.push({ perfil: a.role, email: a.email, senha: pass })
+    }
+  })
+  console.log(`Salão ${slug}: acessos anteriores apagados. Novos acessos de demonstração:`)
+  console.table(created)
 }
 
 async function criar() {
@@ -490,7 +521,7 @@ async function criar() {
   console.log(`Salão ${slug}: demonstração criada`, counts)
 }
 
-;(mode === 'criar' ? criar() : mode === 'limpar' ? limpar() : Promise.reject(new Error('Use: criar | limpar --sim')))
+;(mode === 'criar' ? criar() : mode === 'limpar' ? limpar() : mode === 'acessos' ? acessos() : Promise.reject(new Error('Use: criar | limpar --sim | acessos --sim')))
   .catch((error) => {
     console.error(error.message)
     process.exitCode = 1
