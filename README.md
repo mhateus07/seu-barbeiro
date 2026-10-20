@@ -51,8 +51,11 @@ vinculado ao salão; a cada requisição, o usuário é consultado no respectivo
 
 - **Dono:** configurações e gestão de acessos, além da operação.
 - **Recepção:** agenda, clientes, comanda, financeiro e relacionamento; não altera
-  configurações nem administra usuários.
-- **Profissional:** sua agenda, sua comissão do mês e fichas dos clientes que atende.
+  configurações nem administra usuários. Comissão, preços, cadastro e desativação de
+  profissionais e serviços, pagamento de comissão e exclusão de despesas e vales
+  também são só do dono. Estornos pedem motivo e ficam no registro de segurança.
+- **Profissional:** sua agenda, sua comissão do mês e fichas dos clientes que atende
+  (horário com ele que não foi cancelado nem terminou em falta).
 
 A implantação atual usa o mesmo fuso `SALON_TIMEZONE` para todos os bancos do
 processo (padrão `America/Sao_Paulo`). Para fusos diferentes, use processos separados.
@@ -185,9 +188,12 @@ Drive ficam 60 dias. A restauração está no topo do script.
 
 ### Segurança e LGPD
 
-- Login: 5 senhas erradas para o mesmo e-mail bloqueiam o acesso por 15 minutos.
+- Login: 5 senhas erradas para o mesmo e-mail, vindas do mesmo IP, bloqueiam esse IP
+  por 15 minutos; de outro aparelho a senha certa continua entrando.
   Trocar a senha, desativar o acesso ou "Sair de todos os aparelhos"
   (Configurações → Segurança) derruba as sessões abertas (`admins.tokenVersion`).
+- A URL do provedor de WhatsApp precisa ser `https://` e não pode apontar para a rede
+  interna; avisos push só são aceitos dos serviços dos navegadores.
 - Tokens do Mercado Pago e do WhatsApp ficam cifrados no banco (AES-256-GCM, chave
   `SETTINGS_KEY` do `.env`, gerada pelo `deploy.sh`) e nunca voltam ao navegador.
 - Pelo site, um telefone tem no máximo 3 horários em aberto e cada aparelho faz até
@@ -208,6 +214,9 @@ npm run build
 npm run build
 npm run lint
 ```
+
+O GitHub Actions (`.github/workflows/ci.yml`) roda tudo isso a cada envio, com
+PostgreSQL descartável, e confere se o schema bate com as migrações.
 
 Os testes de integração exigem dois bancos locais descartáveis cujo nome começa com
 `salon_test_`. Nunca usam a `DATABASE_URL` de produção:

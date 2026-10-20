@@ -4,7 +4,7 @@
 # Demais deploys:      ./deploy.sh
 set -euo pipefail
 
-VPS="${VPS:-impulsio}" # alias do ~/.ssh/config → root@173.212.208.109
+VPS="${VPS:-impulsio}"
 REMOTE_DIR="/opt/seu-barbeiro"
 APP_DOMAIN="seubarbeiro.impulsiodigital.com"
 # Domínio anterior: continua no ar redirecionando para o novo (links já compartilhados).

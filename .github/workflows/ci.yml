@@ -1,0 +1,67 @@
+# Testes a cada envio: API com PostgreSQL descartável e painel com build e lint.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: salon_test_only
+          POSTGRES_DB: salon_test_a
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:salon_test_only@127.0.0.1:5432/salon_test_a
+      TEST_DATABASE_URL_B: postgresql://postgres:salon_test_only@127.0.0.1:5432/salon_test_b
+    defaults:
+      run:
+        working-directory: seu-barbeiro-api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: seu-barbeiro-api/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Segundo banco de teste
+        run: PGPASSWORD=salon_test_only psql -h 127.0.0.1 -U postgres -c 'CREATE DATABASE salon_test_b'
+      - name: Migrações nos dois bancos
+        run: |
+          DATABASE_URL=$TEST_DATABASE_URL npx prisma migrate deploy
+          DATABASE_URL=$TEST_DATABASE_URL_B npx prisma migrate deploy
+      - name: Schema e migrações batem
+        run: DATABASE_URL=$TEST_DATABASE_URL npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+      - run: npm test
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: seu-barbeiro-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: seu-barbeiro-web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build

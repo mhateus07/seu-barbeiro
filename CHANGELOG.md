@@ -44,7 +44,7 @@
 - `Dockerfile` único: o container serve a API e o painel no mesmo domínio e aplica as migrações ao iniciar
 - `docker-compose.yml` com PostgreSQL próprio e labels do Traefik (certificados Let's Encrypt automáticos)
 - `deploy.sh` refeito: envia para `/opt/seu-barbeiro`, faz backup do banco, reconstrói, espera o healthcheck; na primeira instalação gera o `.env` com senhas aleatórias e o acesso do dono
-- A VPS antiga da Hostinger (31.97.160.94) foi desativada; o banco de produção começou vazio na Contabo
+- A VPS antiga da Hostinger foi desativada; o banco de produção começou vazio na Contabo
 
 ### Correções
 - Rate limit usa o IP real do cliente atrás do proxy (`trust proxy`)
@@ -144,7 +144,7 @@
 ## Stack
 - **Backend**: Node.js + Express 5 + Prisma 7 + PostgreSQL + JWT + Zod
 - **Frontend**: React + Vite + Tailwind CSS 3 + React Query + Recharts + jsPDF
-- **Produção**: VPS Contabo 173.212.208.109 (`/opt/seu-barbeiro`, Docker + Easypanel/Traefik) — https://seubarbeiro.impulsiodigital.com
+- **Produção**: VPS Contabo (Docker + Easypanel/Traefik) — https://seubarbeiro.impulsiodigital.com
 - **Domínios/DNS**: Hostinger (impulsiodigital.com)
 - **Repositório**: https://github.com/mhateus07/seu-barbeiro
 
