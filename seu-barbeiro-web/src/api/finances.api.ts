@@ -32,8 +32,8 @@ export async function createPayment(input: {
   return data.data
 }
 
-export async function deletePayment(id: string): Promise<void> {
-  await api.delete(`/finances/payments/${id}`)
+export async function deletePayment({ id, reason }: { id: string; reason: string }): Promise<void> {
+  await api.delete(`/finances/payments/${id}`, { data: { reason } })
 }
 
 // ─── EXPENSES ────────────────────────────────────────────────────────────────

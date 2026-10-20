@@ -1,12 +1,12 @@
 import { Response } from 'express'
 import { AuthRequest } from '../../middlewares/auth.middleware'
 import { loginService, getMeService, logoutAllService, LoginLockedError } from './auth.service'
-import { success, apiError } from '../../utils/response'
+import { success, apiError, publicMessage } from '../../utils/response'
 import { LoginInput } from './auth.schema'
 
 export async function login(req: AuthRequest, res: Response) {
   try {
-    const result = await loginService(req.body as LoginInput)
+    const result = await loginService(req.body as LoginInput, req.ip)
     return success(res, result)
   } catch (err) {
     if (err instanceof LoginLockedError) return apiError(res, err.message, 429)
@@ -19,7 +19,7 @@ export async function getMe(req: AuthRequest, res: Response) {
     const admin = await getMeService(req.adminId!)
     return success(res, admin)
   } catch (err) {
-    return apiError(res, (err as Error).message, 404)
+    return apiError(res, publicMessage(err), 404)
   }
 }
 

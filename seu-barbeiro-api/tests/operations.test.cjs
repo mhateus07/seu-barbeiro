@@ -498,6 +498,25 @@ test('salon operations integration', async (t) => {
         ).status,
         403,
       )
+      // Um horário cancelado com o profissional não abre a ficha.
+      await db.appointment.create({
+        data: {
+          clientId: other.id,
+          barberId: barber.id,
+          startsAt: at(15, 5),
+          endsAt: at(16, 5),
+          totalPrice: 0,
+          status: 'CANCELLED',
+        },
+      })
+      assert.equal(
+        (
+          await request(`/operations/clients/${other.id}/records`, {
+            token: proToken,
+          })
+        ).status,
+        403,
+      )
     },
   )
   await t.test(

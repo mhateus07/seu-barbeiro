@@ -1179,7 +1179,7 @@ export function OperationsPage() {
                   >
                     Especialidades
                   </button>
-                  <button
+                  {isOwner && <button
                     className={buttonClass}
                     onClick={() =>
                       setForm({
@@ -1221,7 +1221,7 @@ export function OperationsPage() {
                     }
                   >
                     Preço e duração
-                  </button>
+                  </button>}
                 </div>
               </div>
             ))}
@@ -1829,11 +1829,16 @@ export function OperationsPage() {
                     <button
                       className="underline text-red-700"
                       onClick={() =>
-                        confirm(
-                          'Registrar estorno deste recebimento?',
-                          () => api.delete(`/finances/payments/${p.id}`),
-                          'O registro fica no histórico. A devolução do dinheiro deve ser feita no meio de pagamento original.',
-                        )
+                        setForm({
+                          title: 'Estornar recebimento',
+                          description:
+                            'O registro fica no histórico. A devolução do dinheiro deve ser feita no meio de pagamento original.',
+                          fields: [{ key: 'reason', label: 'Motivo do estorno' }],
+                          submit: (v) =>
+                            api.delete(`/finances/payments/${p.id}`, {
+                              data: { reason: v.reason },
+                            }),
+                        })
                       }
                     >
                       Estornar

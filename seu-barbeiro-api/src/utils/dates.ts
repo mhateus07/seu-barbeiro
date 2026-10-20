@@ -14,3 +14,15 @@ export function dayKey(date: Date) {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
+
+/** Data de um lançamento: "AAAA-MM-DD" de hoje vira agora; de outro dia, o início dele no fuso do salão. */
+export function parseMoment(value?: string) {
+  if (!value) return new Date()
+  if (DATE_ONLY.test(value) && value === dayKey(new Date())) return new Date()
+  return parseDay(value)
+}
+
+/** Aceita "AAAA-MM-DD" ou data e hora ISO; recusa texto que não vira data. */
+export const isDateInput = (value: string) =>
+  (DATE_ONLY.test(value) || !Number.isNaN(Date.parse(value))) &&
+  !Number.isNaN(parseDay(value).getTime())

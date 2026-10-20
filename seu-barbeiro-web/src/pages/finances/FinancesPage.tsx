@@ -30,7 +30,9 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Spinner } from '../../components/ui/Spinner'
 import { formatCurrency } from '../../utils/formatCurrency'
-import { parseDayKey, todayKey } from '../../utils/formatDate'
+import { dayKeyOf, parseDayKey, todayKey } from '../../utils/formatDate'
+import { useAuth } from '../../contexts/auth-state'
+import { toast } from 'sonner'
 
 // ─── LABELS ──────────────────────────────────────────────────────────────────
 
@@ -403,7 +405,9 @@ function PaymentsTab() {
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => {
-                          if (confirm('Registrar estorno integral deste pagamento? O histórico será preservado; devolva o valor pelo meio de pagamento original.')) deleteMutation.mutate(p.id)
+                          const reason = prompt('Motivo do estorno integral deste pagamento? O histórico será preservado; devolva o valor pelo meio de pagamento original.')?.trim()
+                          if (reason && reason.length >= 3) deleteMutation.mutate({ id: p.id, reason })
+                          else if (reason !== undefined) toast.error('Informe o motivo do estorno (pelo menos 3 letras).')
                         }}
                         className="rounded-lg p-1.5 text-zinc-400 hover:bg-red-50 hover:text-red-500 transition-colors"
                       >
@@ -494,6 +498,7 @@ function PaymentsTab() {
 
 function ExpensesTab() {
   const qc = useQueryClient()
+  const isOwner = useAuth().admin?.role === 'OWNER'
   const [showModal, setShowModal] = useState(false)
   const [filterStatus, setFilterStatus] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
@@ -627,7 +632,8 @@ function ExpensesTab() {
             </thead>
             <tbody className="divide-y divide-zinc-100">
               {data!.data.map((expense) => {
-                const isOverdue = expense.status !== 'PAID' && new Date(expense.dueDate) < new Date()
+                // Vence no fim do dia: no próprio dia do vencimento ainda não está atrasada.
+                const isOverdue = expense.status !== 'PAID' && dayKeyOf(expense.dueDate) < todayKey()
                 const statusKey = isOverdue && expense.status === 'PENDING' ? 'OVERDUE' : expense.status
                 const statusCfg = STATUS_CONFIG[statusKey as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.PENDING
                 return (
@@ -655,14 +661,16 @@ function ExpensesTab() {
                             <CheckCircle2 className="h-4 w-4" />
                           </button>
                         )}
-                        <button
-                          onClick={() => {
-                            if (confirm('Remover esta conta?')) deleteMutation.mutate(expense.id)
-                          }}
-                          className="rounded-lg p-1.5 text-zinc-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {isOwner && (
+                          <button
+                            onClick={() => {
+                              if (confirm('Remover esta conta?')) deleteMutation.mutate(expense.id)
+                            }}
+                            className="rounded-lg p-1.5 text-zinc-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -752,6 +760,8 @@ function ExpensesTab() {
 
 function CommissionsTab({ from, to }: { from: string; to: string }) {
   const qc = useQueryClient()
+  // Pagar comissão fecha o período do profissional: só o dono.
+  const isOwner = useAuth().admin?.role === 'OWNER'
   const [showPayModal, setShowPayModal] = useState(false)
   const [selectedBarber, setSelectedBarber] = useState<{ barberId: string; barberName: string; totalRevenue: number; commission: number; commissionRate: number } | null>(null)
   const [payNotes, setPayNotes] = useState('')
@@ -870,7 +880,7 @@ function CommissionsTab({ from, to }: { from: string; to: string }) {
                     >
                       Vale
                     </button>
-                    {b.commission > 0 && (
+                    {isOwner && b.commission > 0 && (
                       <button
                         onClick={() => openPayModal(b)}
                         className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 text-xs font-medium text-emerald-700 transition-colors"

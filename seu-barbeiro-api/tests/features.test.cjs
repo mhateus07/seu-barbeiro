@@ -71,13 +71,14 @@ const approve = (id) => {
 let root, server, db, run, salons
 const stamp = randomUUID().slice(0, 8)
 
-async function request(route, { method = 'GET', body, token, salon = 'alpha' } = {}) {
+async function request(route, { method = 'GET', body, token, salon = 'alpha', headers = {} } = {}) {
   const response = await fetch(`${root}/api/v1${route}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
       'X-Salon': salon,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...headers,
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   })
@@ -171,7 +172,7 @@ test('novas funcionalidades', async (t) => {
     settings[`hours_${d}`] = '00:00-23:59'
   for (const [key, value] of Object.entries(settings))
     await db.settings.upsert({ where: { key }, create: { key, value }, update: { value } })
-  for (const role of ['OWNER', 'PROFESSIONAL'])
+  for (const role of ['OWNER', 'RECEPTION', 'PROFESSIONAL'])
     await db.admin.create({
       data: {
         name: role,
@@ -193,6 +194,7 @@ test('novas funcionalidades', async (t) => {
     ).data.data.token
   const owner = await login('OWNER')
   const pro = await login('PROFESSIONAL')
+  const reception = await login('RECEPTION')
   let phoneSeq = Number(String(Date.now()).slice(-7))
   const phone = () => `5532 9${String(++phoneSeq).padStart(8, '0')}`
   const book = (date, time, extra = {}) =>
@@ -419,7 +421,7 @@ test('novas funcionalidades', async (t) => {
     await request('/finances/payments', { method: 'POST', token: owner, body: { amount: 50, method: 'CASH' } })
     await request('/finances/payments', { method: 'POST', token: owner, body: { amount: 70, method: 'PIX' } })
     const refunded = await request('/finances/payments', { method: 'POST', token: owner, body: { amount: 15, method: 'CASH' } })
-    await request(`/finances/payments/${refunded.data.data.id}`, { method: 'DELETE', token: owner })
+    await request(`/finances/payments/${refunded.data.data.id}`, { method: 'DELETE', token: owner, body: { reason: 'Cobrado em dobro' } })
     await request('/cash/movements', {
       method: 'POST',
       token: owner,
@@ -609,6 +611,54 @@ test('novas funcionalidades', async (t) => {
     )
   })
 
+  await t.test('recepção não mexe em comissão, preço nem no que já foi fechado', async () => {
+    const as = (token, route, method, body) => request(route, { method, token, body })
+    assert.equal((await as(reception, `/barbers/${barber.id}`, 'PATCH', { commissionRate: 90 })).status, 403)
+    assert.equal(
+      (await as(reception, `/barbers/${barber.id}`, 'PATCH', { serviceOverrides: {} })).status,
+      403,
+    )
+    assert.equal((await as(reception, `/barbers/${barber.id}`, 'PATCH', { phone: '32999990000' })).status, 200)
+    assert.equal((await as(reception, `/services/${service.id}`, 'PATCH', { price: 1 })).status, 403)
+    assert.equal(
+      (await as(reception, '/finances/commissions/pay', 'POST', {
+        barberId: barber.id,
+        periodFrom: '2020-01-01',
+        periodTo: '2020-01-31',
+      })).status,
+      403,
+    )
+    const expense = await as(reception, '/finances/expenses', 'POST', {
+      description: 'Aluguel',
+      amount: 1500,
+      category: 'RENT',
+      dueDate: '2026-10-01',
+    })
+    assert.equal(expense.status, 201, JSON.stringify(expense.data))
+    // Vencimento só com dia fica no próprio dia, no fuso do salão.
+    const due = new Date(expense.data.data.dueDate)
+    assert.equal(due.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }), '01/10/2026')
+    assert.equal((await as(reception, `/finances/expenses/${expense.data.data.id}`, 'DELETE')).status, 403)
+    assert.equal((await as(owner, `/finances/expenses/${expense.data.data.id}`, 'DELETE')).status, 200)
+    assert.ok(await db.auditLog.findFirst({ where: { action: 'expense.delete', entityId: expense.data.data.id } }))
+    // Estorno pede motivo e fica registrado com quem fez.
+    const paid = await as(reception, '/finances/payments', 'POST', { amount: 20, method: 'CASH' })
+    assert.equal(paid.status, 201)
+    assert.equal((await as(reception, `/finances/payments/${paid.data.data.id}`, 'DELETE')).status, 400)
+    assert.equal(
+      (await as(reception, `/finances/payments/${paid.data.data.id}`, 'DELETE', { reason: 'Lançado errado' })).status,
+      200,
+    )
+    const log = await db.auditLog.findFirst({ where: { action: 'payment.refund', entityId: paid.data.data.id } })
+    assert.ok(log?.adminId)
+    // Data no futuro e centavo quebrado são recusados.
+    assert.equal(
+      (await as(reception, '/finances/payments', 'POST', { amount: 10, method: 'CASH', paidAt: '2999-01-01' })).status,
+      422,
+    )
+    assert.equal((await as(reception, '/finances/payments', 'POST', { amount: 0.004, method: 'CASH' })).status, 422)
+  })
+
   await t.test('excluir agendamento cancela e mantém o registro', async () => {
     await db.settings.update({ where: { key: 'deposit_mode' }, data: { value: 'off' } })
     const r = await book(day(23), '09:00')
@@ -622,25 +672,38 @@ test('novas funcionalidades', async (t) => {
     assert.equal(again.status, 400)
   })
 
-  await t.test('login bloqueia o e-mail depois de 5 senhas erradas', async () => {
+  await t.test('login bloqueia o e-mail e o IP depois de 5 senhas erradas', async () => {
     const email = `OWNER-feat-${stamp}@test.local`
+    const from = (ip) => ({ 'X-Forwarded-For': ip })
     const wrong = () =>
-      request('/auth/login', { method: 'POST', body: { email, password: 'senha-errada-123' } })
-    for (let i = 0; i < 4; i++) assert.equal((await wrong()).status, 401)
-    assert.equal((await wrong()).status, 401)
-    // Bloqueado: nem a senha certa entra até passar o prazo.
+      request('/auth/login', {
+        method: 'POST',
+        body: { email, password: 'senha-errada-123' },
+        headers: from('203.0.113.9'),
+      })
+    for (let i = 0; i < 5; i++) assert.equal((await wrong()).status, 401)
+    // Bloqueado neste IP: nem a senha certa entra até passar o prazo.
     const locked = await request('/auth/login', {
       method: 'POST',
       body: { email, password: 'test-password-123' },
+      headers: from('203.0.113.9'),
     })
     assert.equal(locked.status, 429)
     assert.ok(await db.auditLog.findFirst({ where: { action: 'login.locked' } }))
+    // O dono, de outro aparelho, continua entrando: errar de propósito não tranca a equipe.
+    const owner = await request('/auth/login', {
+      method: 'POST',
+      body: { email, password: 'test-password-123' },
+      headers: from('198.51.100.20'),
+    })
+    assert.equal(owner.status, 200)
     // Outro e-mail do mesmo salão segue entrando.
     assert.equal(
       (
         await request('/auth/login', {
           method: 'POST',
           body: { email: `PROFESSIONAL-feat-${stamp}@test.local`, password: 'test-password-123' },
+          headers: from('203.0.113.9'),
         })
       ).status,
       200,

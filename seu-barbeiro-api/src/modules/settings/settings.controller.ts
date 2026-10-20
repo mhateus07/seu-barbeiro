@@ -1,6 +1,6 @@
 import { Response } from 'express'
 import { AuthRequest } from '../../middlewares/auth.middleware'
-import { success, apiError } from '../../utils/response'
+import { success, apiError, publicMessage } from '../../utils/response'
 import { getSettings, updateSettings } from './settings.service'
 import { SECRET_SETTINGS } from './settings.schema'
 import { audit } from '../../utils/audit'
@@ -35,6 +35,6 @@ export async function updateSettingsHandler(req: AuthRequest, res: Response) {
     })
     return success(res, visible(updated, req.role))
   } catch (err) {
-    return apiError(res, (err as Error).message, 400)
+    return apiError(res, publicMessage(err), 400)
   }
 }

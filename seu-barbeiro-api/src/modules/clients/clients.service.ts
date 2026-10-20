@@ -1,5 +1,6 @@
 import { normalizePhone } from '../../utils/phone'
 import { prisma } from '../../lib/prisma'
+import { parseDay } from '../../utils/dates'
 import { CreateClientInput, UpdateClientInput } from './clients.schema'
 
 export async function listClients(search?: string, page = 1, limit = 20) {
@@ -36,7 +37,7 @@ export async function createClient(input: CreateClientInput) {
     data: {
       ...input,
       ...(input.phone ? { phone: normalizePhone(input.phone) } : {}),
-      birthDate: input.birthDate ? new Date(input.birthDate) : undefined,
+      birthDate: input.birthDate ? parseDay(input.birthDate) : undefined,
       email: input.email || undefined,
     },
   })
@@ -49,7 +50,7 @@ export async function updateClient(id: string, input: UpdateClientInput) {
     data: {
       ...input,
       ...(input.phone ? { phone: normalizePhone(input.phone) } : {}),
-      birthDate: input.birthDate ? new Date(input.birthDate) : undefined,
+      birthDate: input.birthDate ? parseDay(input.birthDate) : undefined,
       email: input.email || undefined,
     },
   })

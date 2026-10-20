@@ -135,6 +135,8 @@ model Appointment {
   @@index([startsAt])
   @@index([barberId, startsAt])
   @@index([status])
+  @@index([status, startsAt])
+  @@index([clientId, startsAt])
   @@map("appointments")
 }
 
@@ -193,6 +195,8 @@ model Payment {
   updatedAt     DateTime      @updatedAt
 
   @@index([paidAt])
+  @@index([appointmentId])
+  @@index([refundedAt])
   @@map("payments")
 }
 
@@ -210,6 +214,7 @@ model Expense {
 
   @@index([dueDate])
   @@index([status])
+  @@index([status, paidAt])
   @@map("expenses")
 }
 
@@ -299,6 +304,9 @@ model NotificationLog {
   clientId String?
   client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
+  @@index([status, nextAttemptAt])
+  @@index([createdAt])
+  @@index([appointmentId])
   @@map("notification_logs")
 }
 
@@ -342,6 +350,7 @@ model AppointmentSegment {
   kind String
   @@index([barberId, startsAt])
   @@index([resourceId, startsAt])
+  @@index([appointmentId])
   @@map("appointment_segments")
 }
 
@@ -413,6 +422,7 @@ model OrderItem {
   quantity Int
   unitPrice Decimal @db.Decimal(10, 2)
   unitCost Decimal @db.Decimal(10, 2)
+  @@index([appointmentId])
   @@map("order_items")
 }
 
@@ -566,6 +576,8 @@ model PixCharge {
   createdAt     DateTime  @default(now())
 
   @@index([status, expiresAt])
+  @@index([appointmentId])
+  @@index([subscriptionChargeId])
   @@map("pix_charges")
 }
 

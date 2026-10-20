@@ -81,6 +81,27 @@ export async function fillCancelledSlots() {
     take: 50,
   })
   for (const vacancy of cancelled) {
+    // Vaga já ocupada por outro horário ou já oferecida a alguém (oferta ainda
+    // valendo) não precisa de nova tentativa: evita abrir a trava da agenda à toa.
+    const [taken, offered] = await Promise.all([
+      prisma.appointment.count({
+        where: {
+          barberId: vacancy.barberId,
+          status: { notIn: ['CANCELLED', 'NO_SHOW'] },
+          startsAt: { lt: vacancy.endsAt },
+          endsAt: { gt: vacancy.startsAt },
+        },
+      }),
+      prisma.waitlistEntry.count({
+        where: {
+          status: 'OFFERED',
+          reservedStart: vacancy.startsAt,
+          reservedBarberId: vacancy.barberId,
+          expiresAt: { gt: new Date() },
+        },
+      }),
+    ])
+    if (taken || offered) continue
     const candidates = await prisma.waitlistEntry.findMany({
       where: {
         from: { lte: vacancy.startsAt },

@@ -7,6 +7,7 @@ import { randomBytes } from 'node:crypto'
 import { manageUrl } from '../appointments/scheduling'
 import { expireDeposits } from '../payments/pix.service'
 import { runSubscriptionCycle } from '../subscriptions/subscriptions.service'
+import { assertOutboundUrl } from '../../utils/outbound-url'
 
 export async function sendAndLog(params: {
   type: NotificationType
@@ -41,7 +42,20 @@ export async function sendPendingReminders() {
     },
     include: { client: true, barber: true },
   })
-  for (const a of appointments) {
+  // Uma consulta só para saber quem já tem lembrete na fila: o worker roda a
+  // cada minuto e não precisa regravar os mesmos lembretes toda vez.
+  const reminderKey = (a: (typeof appointments)[number]) =>
+    `reminder:${a.id}:${a.startsAt.toISOString()}`
+  const queued = new Set(
+    (
+      await prisma.notificationLog.findMany({
+        where: { dedupeKey: { in: appointments.map(reminderKey) } },
+        select: { dedupeKey: true },
+      })
+    ).map((log) => log.dedupeKey),
+  )
+  const pending = appointments.filter((a) => !queued.has(reminderKey(a)))
+  for (const a of pending) {
     const date = a.startsAt.toLocaleString('pt-BR')
     // Atendimentos antigos ganham o link de autoatendimento no primeiro lembrete.
     const token =
@@ -57,11 +71,11 @@ export async function sendPendingReminders() {
       phone: a.client.phone,
       clientId: a.clientId,
       appointmentId: a.id,
-      dedupeKey: `reminder:${a.id}:${a.startsAt.toISOString()}`,
+      dedupeKey: reminderKey(a),
       message: `Olá, ${a.client.name}! Lembrete do seu atendimento em ${date}, com ${a.barber.name}. ${settings.shop_name}.${manageUrl(token) || ` Para alterar, entre em contato: ${settings.shop_phone}.`}`,
     })
   }
-  return { sent: 0, failed: 0, queued: appointments.length }
+  return { sent: 0, failed: 0, queued: pending.length }
 }
 
 export async function processNotificationQueue() {
@@ -161,6 +175,7 @@ export async function processNotificationQueue() {
           continue
         }
       }
+      await assertOutboundUrl(url)
       const response = await fetch(
         `${url.replace(/\/$/, '')}/message/sendText/${encodeURIComponent(instance)}`,
         {
@@ -194,7 +209,11 @@ export async function processNotificationQueue() {
         data: {
           status: 'FAILED',
           lockedAt: null,
-          error: error instanceof Error ? error.message : 'Falha de envio',
+          // Erro de rede vira texto genérico: o painel não deve revelar detalhes da conexão.
+          error:
+            error instanceof Error && /^(Provedor retornou HTTP \d+|Endereço|Use um)/.test(error.message)
+              ? error.message
+              : 'Falha de conexão com o provedor',
           nextAttemptAt: new Date(
             Date.now() + Math.pow(2, log.attempts + 1) * 60000,
           ),

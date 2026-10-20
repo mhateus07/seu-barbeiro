@@ -278,10 +278,17 @@ router.delete('/blocks/:id', async (req: AuthRequest, res) => {
 router.get('/push/key', (_req, res) => {
   res.json({ publicKey: pushPublicKey() })
 })
+// Só os serviços de push dos navegadores (Chrome, Firefox, Safari, Edge).
+const PUSH_HOSTS = /(^|\.)(fcm\.googleapis\.com|push\.services\.mozilla\.com|push\.apple\.com|notify\.windows\.com)$/
 router.post('/push/subscribe', async (req: AuthRequest, res) => {
   const data = z
     .object({
-      endpoint: z.string().url().startsWith('https://').max(1000),
+      endpoint: z
+        .string()
+        .url()
+        .startsWith('https://')
+        .max(1000)
+        .refine((v) => PUSH_HOSTS.test(new URL(v).hostname), 'Serviço de push não reconhecido'),
       keys: z.object({
         p256dh: z.string().min(10).max(200),
         auth: z.string().min(8).max(100),
@@ -317,12 +324,25 @@ router.post('/resources', owner, async (req, res) => {
     )
 })
 
+/**
+ * O profissional só vê e escreve a ficha de quem ele atende de fato: horário
+ * dele que não foi cancelado nem terminou em falta. Um horário marcado e
+ * cancelado não abre a ficha.
+ */
+async function attendsClient(barberId: string | undefined, clientId: string) {
+  return Boolean(
+    barberId &&
+      (await prisma.appointment.findFirst({
+        where: { clientId, barberId, status: { notIn: ['CANCELLED', 'NO_SHOW'] } },
+        select: { id: true },
+      })),
+  )
+}
+
 router.get('/clients/:id/records', async (req: AuthRequest, res) => {
   if (
     req.role === 'PROFESSIONAL' &&
-    !(await prisma.appointment.findFirst({
-      where: { clientId: req.params.id, barberId: req.barberId || 'none' },
-    }))
+    !(await attendsClient(req.barberId, String(req.params.id)))
   )
     return res.sendStatus(403)
   await audit({
@@ -341,9 +361,7 @@ router.get('/clients/:id/records', async (req: AuthRequest, res) => {
 router.post('/clients/:id/records', async (req: AuthRequest, res) => {
   if (
     req.role === 'PROFESSIONAL' &&
-    !(await prisma.appointment.findFirst({
-      where: { clientId: req.params.id, barberId: req.barberId || 'none' },
-    }))
+    !(await attendsClient(req.barberId, String(req.params.id)))
   )
     return res.sendStatus(403)
   const data = z

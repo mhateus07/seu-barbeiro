@@ -21,6 +21,11 @@ export function todayKey(): string {
   return format(new Date(), 'yyyy-MM-dd')
 }
 
+/** Dia ("AAAA-MM-DD") de uma data da API, no fuso do aparelho. */
+export function dayKeyOf(date: string | Date): string {
+  return format(typeof date === 'string' ? parseISO(date) : date, 'yyyy-MM-dd')
+}
+
 /** "AAAA-MM-DD" como data local; new Date("2026-10-09") cairia no dia 8 no Brasil. */
 export function parseDayKey(day: string): Date {
   return parseISO(day)

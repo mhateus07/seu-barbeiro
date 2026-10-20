@@ -1,10 +1,11 @@
 import { z } from 'zod'
+import { isDateInput } from '../../utils/dates'
 
 export const createClientSchema = z.object({
   name: z.string().min(2),
   phone: z.string().min(8, 'Telefone inválido'),
   email: z.string().email().optional().or(z.literal('')),
-  birthDate: z.string().datetime().optional().or(z.literal('')),
+  birthDate: z.string().refine(isDateInput, 'Data inválida').optional().or(z.literal('')),
   notes: z.string().optional(),
 })
 

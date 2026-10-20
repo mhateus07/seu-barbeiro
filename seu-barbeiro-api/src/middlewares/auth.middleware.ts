@@ -50,3 +50,15 @@ export function allowRoles(...roles: string[]) {
     next()
   }
 }
+
+/** Campos que só o dono altera (comissão, preços): a recepção recebe 403 se enviar. */
+export function ownerOnlyFields(...fields: string[]) {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    const body = (req.body ?? {}) as Record<string, unknown>
+    if (req.role !== 'OWNER' && fields.some((field) => body[field] !== undefined))
+      return res
+        .status(403)
+        .json({ error: { message: 'Só o dono do salão altera comissão e preços' } })
+    next()
+  }
+}

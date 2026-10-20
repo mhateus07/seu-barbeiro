@@ -57,6 +57,11 @@ export async function getDashboardStats(from?: string, to?: string) {
   const startDate = from ? parseDay(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
   startDate.setHours(0, 0, 0, 0)
   const endDate = to ? parseDay(to, true) : new Date()
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()))
+    throw new Error('Período inválido')
+  // Período de no máximo um ano: o gráfico monta um ponto por dia.
+  if (endDate.getTime() - startDate.getTime() > 366 * 86400000)
+    throw new Error('Escolha um período de até um ano')
 
   const [appointments, cashEntries] = await Promise.all([
     prisma.appointment.findMany({

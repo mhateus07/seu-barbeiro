@@ -317,7 +317,14 @@ export async function runSubscriptionCycle() {
       },
       update: {},
     })
-    if (charge.status === 'PENDING' && charge.createdAt > new Date(now.getTime() - 120000))
+    // Gera o Pix enquanto a mensalidade não tiver nenhum emitido no Mercado Pago:
+    // se uma rodada falhar, a seguinte tenta de novo. Pix vencido não é refeito.
+    if (
+      charge.status === 'PENDING' &&
+      !(await prisma.pixCharge.count({
+        where: { subscriptionChargeId: charge.id, providerId: { not: null } },
+      }))
+    )
       await startCharge(charge.id).catch((error) =>
         console.error('Falha ao gerar mensalidade', error),
       )

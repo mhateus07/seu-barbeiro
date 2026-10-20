@@ -5,8 +5,11 @@ import { listServices, deleteService } from '../../api/services.api'
 import { ServiceFormModal } from './ServiceFormModal'
 import { formatCurrency } from '../../utils/formatCurrency'
 import type { Service } from '../../types'
+import { useAuth } from '../../contexts/auth-state'
 
 export function ServicesPage() {
+  // Cadastrar e desativar mexem em comissão e preço: só o dono.
+  const isOwner = useAuth().admin?.role === 'OWNER'
   const qc = useQueryClient()
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Service | null>(null)
@@ -28,13 +31,13 @@ export function ServicesPage() {
           <h1 className="text-xl font-bold text-zinc-800 md:text-2xl">Serviços</h1>
           <p className="text-sm text-zinc-500 mt-0.5">{data.length} cadastrado(s)</p>
         </div>
-        <button
+        {isOwner && <button
           onClick={() => { setEditing(null); setModalOpen(true) }}
           className="flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 px-4 py-2.5 text-sm font-semibold text-white transition-colors"
         >
           <Plus className="h-4 w-4" />
           Novo serviço
-        </button>
+        </button>}
       </div>
 
       {isLoading ? (
@@ -80,12 +83,12 @@ export function ServicesPage() {
                   <Pencil className="h-3.5 w-3.5" />
                   Editar
                 </button>
-                <button
+                {isOwner && <button
                   onClick={() => { if (confirm(`Desativar "${service.name}"?`)) deleteMutation.mutate(service.id) }}
                   className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 transition-colors ml-auto"
                 >
                   Desativar
-                </button>
+                </button>}
               </div>
             </div>
           ))}

@@ -1,7 +1,7 @@
 import { runSchedule } from '../appointments/scheduling'
 import { ExpenseStatus } from '@prisma/client'
 import { prisma } from '../../lib/prisma'
-import { dayKey, parseDay } from '../../utils/dates'
+import { dayKey, parseDay, parseMoment } from '../../utils/dates'
 import {
   CreatePaymentInput,
   CreateExpenseInput,
@@ -86,13 +86,13 @@ export async function createPayment(input: CreatePaymentInput) {
     return tx.payment.create({
       data: {
         ...input,
-        paidAt: input.paidAt ? new Date(input.paidAt) : new Date(),
+        paidAt: parseMoment(input.paidAt),
       },
     })
   })
 }
 
-export async function deletePayment(id: string) {
+export async function deletePayment(id: string, reason = 'Estorno solicitado pelo operador') {
   return runSchedule(async (tx) => {
     const payment = await tx.payment.findUnique({ where: { id } })
     if (!payment) throw new Error('Pagamento não encontrado')
@@ -101,7 +101,7 @@ export async function deletePayment(id: string) {
       where: { id },
       data: {
         refundedAt: new Date(),
-        refundReason: 'Estorno solicitado pelo operador',
+        refundReason: reason,
       },
     })
   })
@@ -150,7 +150,7 @@ export async function createExpense(input: CreateExpenseInput) {
       description: input.description,
       amount: input.amount,
       category: input.category,
-      dueDate: new Date(input.dueDate),
+      dueDate: parseDay(input.dueDate),
       notes: input.notes,
     },
   })
@@ -166,7 +166,7 @@ export async function updateExpense(id: string, input: UpdateExpenseInput) {
       description: input.description,
       amount: input.amount,
       category: input.category,
-      dueDate: input.dueDate ? new Date(input.dueDate) : undefined,
+      dueDate: input.dueDate ? parseDay(input.dueDate) : undefined,
       notes: input.notes,
       status: input.status,
     },
@@ -183,7 +183,7 @@ export async function payExpense(id: string, input: PayExpenseInput) {
     where: { id },
     data: {
       status: ExpenseStatus.PAID,
-      paidAt: input.paidAt ? new Date(input.paidAt) : new Date(),
+      paidAt: parseMoment(input.paidAt),
     },
   })
 }
@@ -198,9 +198,9 @@ export async function deleteExpense(id: string) {
 
 export async function getCommissions(from?: string, to?: string) {
   const fromDate = from
-    ? new Date(`${from}T00:00:00`)
+    ? parseDay(from)
     : new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-  const toDate = to ? new Date(`${to}T23:59:59`) : new Date()
+  const toDate = to ? parseDay(to, true) : new Date()
 
   const barbers = await prisma.barber.findMany({ where: { isActive: true } })
   const openAdvances = await prisma.barberAdvance.groupBy({
@@ -257,8 +257,8 @@ export async function getCommissions(from?: string, to?: string) {
 
 export async function payCommission(input: PayCommissionInput) {
   return runSchedule(async (tx) => {
-    const periodFrom = new Date(`${input.periodFrom}T00:00:00`),
-      periodTo = new Date(`${input.periodTo}T23:59:59`)
+    const periodFrom = parseDay(input.periodFrom),
+      periodTo = parseDay(input.periodTo, true)
     if (
       !Number.isFinite(periodFrom.getTime()) ||
       !Number.isFinite(periodTo.getTime()) ||
@@ -325,7 +325,7 @@ export async function payCommission(input: PayCommissionInput) {
           : 0,
         notes: input.notes,
         advancesDeducted,
-        paidAt: input.paidAt ? new Date(input.paidAt) : new Date(),
+        paidAt: parseMoment(input.paidAt),
       },
       include: { barber: { select: { id: true, name: true } } },
     })
@@ -402,9 +402,9 @@ export async function listCashEntries(fromDate: Date, toDate: Date) {
 
 export async function getFinancialSummary(from?: string, to?: string) {
   const fromDate = from
-    ? new Date(`${from}T00:00:00`)
+    ? parseDay(from)
     : new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-  const toDate = to ? new Date(`${to}T23:59:59`) : new Date()
+  const toDate = to ? parseDay(to, true) : new Date()
 
   const [payments, expenses, pendingExpenses] = await Promise.all([
     listCashEntries(fromDate, toDate),

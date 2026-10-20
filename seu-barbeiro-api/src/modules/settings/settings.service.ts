@@ -1,6 +1,7 @@
 import { prisma } from '../../lib/prisma'
 import { SECRET_SETTINGS, SETTING_DEFAULTS, UpdateSettingsInput } from './settings.schema'
 import { decryptSecret, encryptSecret, isEncrypted } from '../../utils/secrets'
+import { checkOutboundUrl } from '../../utils/outbound-url'
 
 export async function getSettings(
   db: Pick<typeof prisma, 'settings'> = prisma,
@@ -42,6 +43,10 @@ export async function updateSettings(
       (!Number.isFinite(Number(value)) || Number(value) <= 0)
     )
       throw new Error('Valor de configuração inválido')
+    if (key === 'whatsapp_api_url' && value) {
+      const problem = checkOutboundUrl(value)
+      if (problem) throw new Error(`URL do WhatsApp: ${problem}`)
+    }
     if (key === 'shop_logo' && value && !value.startsWith('https://'))
       throw new Error('Use uma URL HTTPS para o logo')
     if (key === 'deposit_mode' && !['off', 'all', 'no_show'].includes(value))

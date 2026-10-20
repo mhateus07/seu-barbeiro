@@ -6,6 +6,7 @@ import { Input } from '../../components/ui/Input'
 import { Button } from '../../components/ui/Button'
 import { createService, updateService } from '../../api/services.api'
 import type { Service } from '../../types'
+import { useAuth } from '../../contexts/auth-state'
 
 interface Props {
   open: boolean
@@ -23,6 +24,8 @@ interface FormData {
 export function ServiceFormModal({ open, onClose, service }: Props) {
   const qc = useQueryClient()
   const isEdit = !!service
+  // Preço é do dono; para a recepção o campo fica só para leitura.
+  const isOwner = useAuth().admin?.role === 'OWNER'
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>()
 
@@ -35,6 +38,7 @@ export function ServiceFormModal({ open, onClose, service }: Props) {
   }, [service, reset])
 
   const mutation = useMutation({
+    // Campo desativado chega como undefined e não vai na requisição.
     mutationFn: (data: FormData) =>
       isEdit ? updateService(service!.id, data) : createService(data),
     onSuccess: () => {
@@ -54,6 +58,7 @@ export function ServiceFormModal({ open, onClose, service }: Props) {
             type="number"
             step="0.01"
             min="0"
+            disabled={!isOwner}
             {...register('price', { required: 'Obrigatório', valueAsNumber: true })}
             error={errors.price?.message}
           />

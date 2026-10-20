@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../../lib/prisma'
-import { AuthRequest } from '../../middlewares/auth.middleware'
+import { AuthRequest, allowRoles } from '../../middlewares/auth.middleware'
 import { businessErrors } from '../../utils/route-errors'
 import { runSchedule } from '../appointments/scheduling'
 import { addMovement } from '../cash/cash.service'
@@ -72,7 +72,8 @@ router.post('/', async (req: AuthRequest, res) => {
   )
 })
 
-router.delete('/:id', async (req, res) => {
+// Apagar vale muda o que a pessoa vai receber: só o dono.
+router.delete('/:id', allowRoles('OWNER'), async (req, res) => {
   res.json(
     await runSchedule(async (tx) => {
       const advance = await tx.barberAdvance.findUnique({

@@ -6,6 +6,7 @@ import { Input } from '../../components/ui/Input'
 import { Button } from '../../components/ui/Button'
 import { createBarber, updateBarber } from '../../api/barbers.api'
 import type { Barber } from '../../types'
+import { useAuth } from '../../contexts/auth-state'
 
 interface Props {
   open: boolean
@@ -23,6 +24,8 @@ interface FormData {
 export function BarberFormModal({ open, onClose, barber }: Props) {
   const qc = useQueryClient()
   const isEdit = !!barber
+  // Comissão é do dono; para a recepção o campo fica só para leitura.
+  const isOwner = useAuth().admin?.role === 'OWNER'
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>()
 
@@ -36,7 +39,10 @@ export function BarberFormModal({ open, onClose, barber }: Props) {
 
   const mutation = useMutation({
     mutationFn: (data: FormData) => {
-      const payload = { ...data, commissionRate: data.commissionRate !== '' ? Number(data.commissionRate) : undefined }
+      const payload = {
+        ...data,
+        commissionRate: isOwner && data.commissionRate !== '' ? Number(data.commissionRate) : undefined,
+      }
       return isEdit ? updateBarber(barber!.id, payload) : createBarber(payload)
     },
     onSuccess: () => {
@@ -57,6 +63,7 @@ export function BarberFormModal({ open, onClose, barber }: Props) {
           min="0"
           max="100"
           step="0.5"
+          disabled={!isOwner}
           {...register('commissionRate')}
           placeholder="Ex: 40 (para 40%)"
         />

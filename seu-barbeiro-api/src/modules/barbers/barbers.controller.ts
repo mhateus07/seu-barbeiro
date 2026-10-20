@@ -1,6 +1,6 @@
 import { Response } from 'express'
 import { AuthRequest } from '../../middlewares/auth.middleware'
-import { success, apiError } from '../../utils/response'
+import { success, apiError, publicMessage } from '../../utils/response'
 import {
   listBarbers,
   getBarberById,
@@ -23,7 +23,7 @@ export async function getOne(req: AuthRequest, res: Response) {
     const barber = await getBarberById(req.params.id)
     return success(res, barber)
   } catch (err) {
-    return apiError(res, (err as Error).message, 404)
+    return apiError(res, publicMessage(err), 404)
   }
 }
 
@@ -37,7 +37,7 @@ export async function update(req: AuthRequest, res: Response) {
     const barber = await updateBarber(req.params.id, req.body)
     return success(res, barber)
   } catch (err) {
-    return apiError(res, (err as Error).message, 404)
+    return apiError(res, publicMessage(err), 404)
   }
 }
 
@@ -46,7 +46,7 @@ export async function remove(req: AuthRequest, res: Response) {
     await deactivateBarber(req.params.id)
     return success(res, { message: 'Profissional desativado com sucesso' })
   } catch (err) {
-    return apiError(res, (err as Error).message, 404)
+    return apiError(res, publicMessage(err), 404)
   }
 }
 
@@ -59,6 +59,6 @@ export async function appointments(req: AuthRequest, res: Response) {
     )
     return success(res, data)
   } catch (err) {
-    return apiError(res, (err as Error).message, 404)
+    return apiError(res, publicMessage(err), 404)
   }
 }
