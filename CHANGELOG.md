@@ -1,5 +1,57 @@
 # Changelog — Seu Barbeiro
 
+## [20/10/2026] — Revisão geral: segurança, permissões, datas e CI
+
+Revisão completa do projeto: segurança da API e da infraestrutura, banco e operação,
+painel, concorrentes e integrações. Pendências e ideias viraram issues (#38 a #63, no
+quadro "Seu Barbeiro"). Publicado em produção no mesmo dia, com backup cifrado antes.
+
+### Segurança e permissões
+- **Login**: o bloqueio depois de 5 senhas erradas vale para e-mail **e IP**. Antes,
+  qualquer pessoa trancava a equipe fora do painel errando a senha do dono de propósito.
+  Senhas passam ao custo 12 do bcrypt (as antigas são recalculadas no primeiro login)
+- **Recepção**: deixa de alterar comissão e preço por profissional, preço de serviço,
+  cadastrar ou desativar profissional e serviço, pagar comissão e apagar despesas e vales
+  (só o dono). No painel, botões e campos ficam escondidos ou só para leitura
+- **Estorno** pede motivo e entra no registro de segurança com quem fez; despesa apagada
+  e comissão paga também ficam registradas
+- **Fichas técnicas**: o profissional só abre a de quem atende (horário com ele que não
+  foi cancelado nem terminou em falta)
+- URL do provedor de WhatsApp só `https://` e fora da rede interna; avisos push só dos
+  serviços dos navegadores; o limite de requisições ignora salão inventado no `X-Salon`
+- Listagens com no máximo 100 itens, painel com período de até um ano e erros internos
+  trocados por mensagem genérica
+- Referências ao servidor de produção removidas do `deploy.sh` e deste arquivo
+
+### Correções
+- Datas só com dia (vencimento de despesa, data do recebimento, nascimento) caíam no dia
+  anterior, às 21h, no fuso de Brasília. Agora ficam no dia certo (`parseDay`/`parseMoment`)
+  e a despesa não aparece como vencida no próprio dia do vencimento
+- Recebimento com data no futuro e valor com mais de 2 casas decimais são recusados
+- A mensalidade só gerava o Pix nos 2 minutos seguintes à criação; agora tenta até emitir
+
+### Desempenho
+- Migração `20261020000000_query_indexes` (só índices): agenda por situação e data,
+  histórico do cliente, pagamentos, itens e segmentos por atendimento, Pix, fila de
+  mensagens e despesas pagas
+- Lembretes consultam de uma vez quem já está na fila; a lista de espera pula vagas já
+  ocupadas ou já oferecidas
+
+### Técnico
+- `.github/workflows/ci.yml`: testes da API com PostgreSQL descartável, conferência do
+  schema com as migrações, lint e build do painel a cada envio
+- Testes: 39 aprovados (novo teste das permissões da recepção, das datas e do estorno)
+- Commits `2a7fc19` e `74274a9`
+
+### Ficou para depois (issues)
+- Backup a cada poucas horas e chaves do servidor num cofre de senhas (#50); alerta de
+  queda (#32); horários do site com consultas demais (#47); banco e container sem
+  privilégios de administrador (#48); deploy com volta de versão (#49); vínculos por chave
+  entre vales, comissão e despesas (#51); contas em centavos (#52); prévia do link de
+  agendamento (#54); erros de rede no agendamento e no financeiro (#55)
+
+---
+
 ## [04/10/2026] — Visual novo e 7 funcionalidades para a equipe
 
 ### Visual
