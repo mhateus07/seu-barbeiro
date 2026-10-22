@@ -49,8 +49,6 @@ export async function updateSettings(
     }
     if (key === 'shop_logo' && value && !value.startsWith('https://'))
       throw new Error('Use uma URL HTTPS para o logo')
-    if (key === 'shop_segment' && !['beauty', 'barbershop'].includes(value))
-      throw new Error('Segmento inválido')
     if (key === 'deposit_mode' && !['off', 'all', 'no_show'].includes(value))
       throw new Error('Modo de sinal inválido')
     if (key === 'deposit_type' && !['percent', 'fixed'].includes(value))

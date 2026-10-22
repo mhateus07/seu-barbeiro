@@ -22,7 +22,6 @@ export async function getPublicInfo() {
     shopLogo: settings.shop_logo,
     shopDescription: settings.shop_description,
     shopName: settings.shop_name,
-    segment: settings.shop_segment,
     shopPhone: settings.shop_phone,
     shopAddress: settings.shop_address,
     shopInstagram: settings.shop_instagram,

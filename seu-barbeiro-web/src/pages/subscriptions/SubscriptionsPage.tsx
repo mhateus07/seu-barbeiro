@@ -160,7 +160,7 @@ export function SubscriptionsPage() {
             Assinaturas
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Clube de assinatura: o cliente paga por mês e usa no salão. Cobrança por Pix pelo WhatsApp.
+            Clube do corte: o cliente paga por mês e usa no salão. Cobrança por Pix pelo WhatsApp.
           </p>
         </div>
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">

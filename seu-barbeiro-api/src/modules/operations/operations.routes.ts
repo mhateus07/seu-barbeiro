@@ -25,7 +25,6 @@ router.get('/identity', async (_req, res) => {
   res.json({
     slug: currentSalon().slug,
     name: s.shop_name,
-    segment: s.shop_segment,
     logo: s.shop_logo || '',
     phone: s.shop_phone,
     address: s.shop_address,

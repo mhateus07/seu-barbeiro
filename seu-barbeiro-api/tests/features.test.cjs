@@ -218,20 +218,6 @@ test('novas funcionalidades', async (t) => {
     assert.equal(r.data.data.mp_access_token_set, 'true')
   })
 
-  await t.test('segmento do salão chega ao site e ao painel e só aceita os dois valores', async () => {
-    await db.settings.deleteMany({ where: { key: 'shop_segment' } })
-    // Salão antigo, sem o valor gravado, continua barbearia.
-    assert.equal((await request('/public/info')).data.segment, 'barbershop')
-    const save = (value, token = owner) =>
-      request('/settings', { method: 'PATCH', token, body: { settings: { shop_segment: value } } })
-    assert.equal((await save('beauty')).status, 200)
-    assert.equal((await request('/public/info')).data.segment, 'beauty')
-    assert.equal((await request('/operations/identity', { token: reception })).data.segment, 'beauty')
-    assert.equal((await save('feminino')).status, 400)
-    assert.equal((await save('barbershop', reception)).status, 403)
-    await db.settings.deleteMany({ where: { key: 'shop_segment' } })
-  })
-
   await t.test('profissional bloqueia só a própria agenda', async () => {
     const block = (barberId, h) =>
       request('/operations/blocks', {

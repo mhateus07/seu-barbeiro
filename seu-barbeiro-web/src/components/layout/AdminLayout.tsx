@@ -1,7 +1,4 @@
 import { Suspense, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { api } from '../../api/axios'
-import { segmentBrand, useApplyBrand } from '../../brand/brand'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
@@ -10,12 +7,6 @@ import { PageSkeleton } from '../ui/Skeleton'
 export function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { pathname } = useLocation()
-  // Mesma consulta da barra lateral; o segmento do salão escolhe a marca.
-  const { data: identity } = useQuery({
-    queryKey: ['identity'],
-    queryFn: async () => (await api.get('/operations/identity')).data,
-  })
-  useApplyBrand(identity ? segmentBrand(identity.segment) : undefined)
 
   return (
     <div className="flex h-dvh overflow-hidden bg-navalha">

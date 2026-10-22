@@ -31,7 +31,6 @@ export interface PublicInfo {
   shopLogo: string
   shopDescription: string
   shopName: string
-  segment: 'beauty' | 'barbershop'
   shopPhone: string
   shopAddress: string
   shopInstagram: string

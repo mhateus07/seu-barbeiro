@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { BrandLogo } from '../../components/ui/BrandMark'
-import { hostBrand, useApplyBrand, useBrand } from '../../brand/brand'
 
 // Política de privacidade (LGPD) do Seu Barbeiro, aberta a qualquer pessoa em
 // /privacidade. Vale para os clientes dos salões e para as equipes que usam o
@@ -21,13 +20,11 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 export function PrivacyPage() {
-  useApplyBrand(hostBrand())
-  const brand = useBrand()
   return (
     <div className="min-h-dvh bg-white text-zinc-900">
       <header className="border-b border-zinc-200">
         <div className="mx-auto flex h-16 max-w-3xl items-center px-4 sm:px-6">
-          <Link to="/" aria-label={`${brand.name}, página inicial`}>
+          <Link to="/" aria-label="Seu Barbeiro, página inicial">
             <BrandLogo />
           </Link>
         </div>
@@ -37,7 +34,7 @@ export function PrivacyPage() {
         <h1 className="text-[2rem] leading-tight tracking-[-0.02em] sm:text-[2.5rem]">Política de privacidade</h1>
         <p className="mt-3 text-sm text-zinc-500">Atualizada em {UPDATED}.</p>
         <p className="mb-8 mt-6 text-[17px] leading-relaxed text-zinc-700">
-          O {brand.name} é um sistema de agenda e gestão usado por barbearias e salões. Esta página
+          O Seu Barbeiro é um sistema de agenda e gestão usado por barbearias e salões. Esta página
           explica quais dados pessoais passam por ele, para quê, por quanto tempo e como pedir uma
           cópia, uma correção ou a exclusão.
         </p>

@@ -8,7 +8,6 @@
 
 /*
   Tema do Seu Barbeiro, a partir de identidade-visual/ (guia de marca e tokens).
-  A marca Belaza redefine as mesmas variáveis mais abaixo.
 
   As telas usam as classes `zinc` e `amber` do Tailwind. Em vez de reescrever
   cada tela, as escalas são redefinidas com as cores da marca:
@@ -297,92 +296,6 @@
 
   background: var(--color-zinc-50);
   color: var(--color-zinc-800);
-}
-
-/*
-  Marca Belaza (salões de beleza; identidade-visual/belaza/). Mesmo sistema,
-  outras tintas: Ameixa no lugar do Azul Navalha, Linho no lugar da Espuma, Rosé
-  nos fundos suaves e Cobre no destaque. Cada degrau neutro tem a luminosidade do
-  degrau equivalente do Seu Barbeiro, então os contrastes já conferidos valem.
-  Liga com `data-brand="belaza"` no <html> (src/brand/brand.ts).
-*/
-:root[data-brand='belaza'] {
-  --color-navalha: #3a1c32;
-  --color-espuma: #f7f3f0;
-  --color-toalha: #e7d0e0;
-  --color-poste: #c9663f;
-  --color-accent: #b5532f;
-
-  --color-zinc-50: #f8f4f1;
-  --color-zinc-100: #efeae8;
-  --color-zinc-200: #e0d8d8;
-  --color-zinc-300: #ccc1c4;
-  --color-zinc-400: #9d8a94;
-  --color-zinc-500: #735a6a;
-  --color-zinc-600: #604657;
-  --color-zinc-700: #503347;
-  --color-zinc-800: #45283c;
-  --color-zinc-900: #3a1c32;
-  --color-zinc-950: #1f0e1a;
-
-  --color-amber-50: #f8f0f5;
-  --color-amber-100: #f0e1eb;
-  --color-amber-200: #e7d0e0;
-  --color-amber-300: #dab3ce;
-  --color-amber-400: #522646;
-  --color-amber-500: #3a1c32;
-  --color-amber-600: #3a1c32;
-  --color-amber-700: #3a1c32;
-  --color-amber-800: #1f0e1a;
-  --color-amber-900: #1f0e1a;
-
-  --shadow-soft: 0 1px 0 rgb(58 28 50 / 0.03);
-  --shadow-lift: 0 1px 2px rgb(58 28 50 / 0.06), 0 4px 14px -6px rgb(58 28 50 / 0.14),
-    0 18px 40px -16px rgb(58 28 50 / 0.22);
-}
-
-:root[data-brand='belaza'] .on-ink {
-  --color-zinc-500: #a6919f;
-  --color-zinc-600: #8b6f82;
-
-  --color-amber-50: rgb(218 179 206 / 0.08);
-  --color-amber-100: rgb(218 179 206 / 0.14);
-  --color-amber-200: rgb(218 179 206 / 0.24);
-  --color-amber-300: #edd9e6;
-  --color-amber-400: #e5c9dc;
-  --color-amber-500: #dab3ce;
-  --color-amber-600: #dab3ce;
-  --color-amber-700: #e7d0e0;
-  --color-amber-800: #f0e1eb;
-
-  --color-accent: #ff9a76;
-}
-
-:root[data-brand='belaza'][data-theme='dark'] .app-surface {
-  --color-white: #2c1b27;
-  --color-zinc-50: #200f1b;
-  --color-zinc-100: #33212e;
-  --color-zinc-200: #43303d;
-  --color-zinc-300: #564250;
-  --color-zinc-400: #8b8388;
-  --color-zinc-500: #b0a8ad;
-  --color-zinc-600: #c4bcc1;
-  --color-zinc-700: #d9d1d7;
-  --color-zinc-800: #e8e2e6;
-  --color-zinc-900: #f2eef0;
-  --color-zinc-950: #f9f7f9;
-
-  --color-amber-50: rgb(218 179 206 / 0.08);
-  --color-amber-100: rgb(218 179 206 / 0.14);
-  --color-amber-200: rgb(218 179 206 / 0.26);
-  --color-amber-300: #ac7b9e;
-  --color-amber-400: #e5c9dc;
-  --color-amber-500: #dab3ce;
-  --color-amber-600: #dab3ce;
-  --color-amber-700: #e7d0e0;
-  --color-amber-800: #f0e1eb;
-
-  --color-accent: #ff9a76;
 }
 
 /*
