@@ -64,7 +64,8 @@ export function AppRouter() {
           <Route element={<AdminLayout />}>
             <Route path="/operacao" element={<OperationsPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/barbeiros" element={<BarbersPage />} />
+            <Route path="/profissionais" element={<BarbersPage />} />
+            <Route path="/barbeiros" element={<Navigate to="/profissionais" replace />} />
             <Route path="/servicos" element={<ServicesPage />} />
             <Route path="/clientes" element={<ClientsPage />} />
             <Route path="/agendamentos" element={<AppointmentsPage />} />

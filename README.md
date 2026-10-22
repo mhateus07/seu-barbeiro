@@ -1,6 +1,7 @@
 # Seu Barbeiro
 
-Gestão para salões e barbearias.
+Gestão para salões e barbearias, com duas marcas no mesmo sistema: **Belaza** para
+salões de beleza e **Seu Barbeiro** para barbearias.
 
 React + Vite no painel, Express + Prisma + PostgreSQL na API. A tela **Agenda e
 operação** reúne agenda por profissional, escalas, bloqueios, serviços por etapas,
@@ -33,6 +34,21 @@ npm run dev
 
 Entre em `/login`, informe o identificador do salão e as credenciais criadas.
 O agendamento público usa `/agendar?salon=identificador`.
+
+## Segmento e marca
+
+Em Configurações → Informações, o dono escolhe o tipo de estabelecimento
+(`shop_segment`): `beauty` (salão de beleza) mostra a marca **Belaza**; `barbershop`
+(barbearia) mostra o **Seu Barbeiro**. A escolha muda logo, cores, ícone do app e textos do
+painel e das páginas que o cliente abre (agendamento, Pix, meu horário). Salões sem o
+valor gravado continuam barbearia; o seed cria salões novos como salão de beleza
+(`SHOP_SEGMENT=barbershop` para barbearia).
+
+O site e a tela de entrada seguem o domínio: um endereço com `belaza` mostra a Belaza
+(para conferir sem o domínio, use `?marca=belaza`). A apresentação da raiz ainda é só do
+Seu Barbeiro; no domínio da Belaza a raiz leva à entrada. Os arquivos de marca ficam em
+`identidade-visual/` (Belaza em `identidade-visual/belaza/`) e a troca no painel em
+`seu-barbeiro-web/src/brand/brand.ts`.
 
 ## Vários salões e acessos
 

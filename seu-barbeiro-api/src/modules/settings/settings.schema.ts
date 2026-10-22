@@ -9,6 +9,10 @@ export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>
 // Valores padrão das configurações
 export const SETTING_DEFAULTS: Record<string, string> = {
   shop_name: 'Meu salão',
+  // Segmento: beauty (salão de beleza, marca Belaza) | barbershop (barbearia, marca
+  // Seu Barbeiro). Muda marca, cores e textos do painel e das páginas do cliente.
+  // Salões antigos, sem o valor gravado, continuam como barbearia.
+  shop_segment: 'barbershop',
   shop_logo: '',
   shop_description: 'Conheça nossos serviços e escolha seu próximo horário.',
   shop_phone: '',

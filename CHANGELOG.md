@@ -1,5 +1,20 @@
 # Changelog — Seu Barbeiro
 
+## [22/10/2026] — Marca Belaza e segmento do salão
+
+O foco comercial passa a ser os salões de beleza. O sistema continua um só, com duas
+marcas: **Belaza** para salões de beleza e **Seu Barbeiro** para barbearias (#17, #28).
+
+- **Identidade Belaza** em `identidade-visual/belaza/`: monograma "B" e nome em IBM Plex
+  Serif, cores Ameixa, Linho, Rosé e Cobre, ícones do app e manifesto próprio
+- **Segmento do salão** (`shop_segment`, em Configurações → Informações): troca logo,
+  cores, ícone, título da aba e textos do painel e das páginas do cliente. Salões já
+  existentes continuam barbearia; o seed cria salão novo como salão de beleza
+- Site e tela de entrada seguem o domínio (`?marca=belaza` para conferir)
+- Textos neutros: "Profissionais" em `/profissionais` (o endereço antigo `/barbeiros`
+  continua levando para lá), "Clube de assinatura", "Nome do salão" ou "da barbearia"
+- Teste novo: o segmento chega ao site e ao painel e só aceita os dois valores (40/40)
+
 ## [20/10/2026] — Revisão geral: segurança, permissões, datas e CI
 
 Revisão completa do projeto: segurança da API e da infraestrutura, banco e operação,

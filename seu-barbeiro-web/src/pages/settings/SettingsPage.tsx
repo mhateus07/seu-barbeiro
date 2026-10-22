@@ -66,6 +66,7 @@ function InfoTab({
 }) {
   const [form, setForm] = useState({
     shop_name: settings.shop_name ?? '',
+    shop_segment: settings.shop_segment ?? 'barbershop',
     shop_logo: settings.shop_logo ?? '',
     shop_description: settings.shop_description ?? '',
     shop_phone: settings.shop_phone ?? '',
@@ -77,8 +78,25 @@ function InfoTab({
     <div className="space-y-5 max-w-xl">
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1.5 col-span-2">
+          <label htmlFor="shop-segment" className="text-xs font-medium text-zinc-600">
+            Tipo de estabelecimento
+          </label>
+          <select
+            id="shop-segment"
+            value={form.shop_segment}
+            onChange={(e) => setForm({ ...form, shop_segment: e.target.value })}
+            className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900"
+          >
+            <option value="beauty">Salão de beleza (marca Belaza)</option>
+            <option value="barbershop">Barbearia (marca Seu Barbeiro)</option>
+          </select>
+          <p className="text-xs text-zinc-500">
+            Muda a marca, as cores e os textos do painel e das páginas que o cliente abre.
+          </p>
+        </div>
+        <div className="flex flex-col gap-1.5 col-span-2">
           <label className="text-xs font-medium text-zinc-600">
-            Nome da barbearia
+            {form.shop_segment === 'beauty' ? 'Nome do salão' : 'Nome da barbearia'}
           </label>
           <Input
             value={form.shop_name}
@@ -544,7 +562,7 @@ function WhatsAppTab({
               onChange={(e) =>
                 setForm({ ...form, whatsapp_instance: e.target.value })
               }
-              placeholder="seu-barbeiro"
+              placeholder="meu-salao"
             />
           </div>
         </div>
@@ -671,6 +689,8 @@ export function SettingsPage() {
     mutationFn: updateSettings,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['settings'] })
+      // Nome, logo e segmento aparecem na barra lateral e trocam a marca.
+      qc.invalidateQueries({ queryKey: ['identity'] })
       setSavedMsg(true)
       setTimeout(() => setSavedMsg(false), 3000)
     },

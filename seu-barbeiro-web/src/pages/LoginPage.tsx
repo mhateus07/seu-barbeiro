@@ -12,11 +12,14 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { BrandLogo } from '../components/ui/BrandMark'
+import { hostBrand, useApplyBrand, useBrand } from '../brand/brand'
 
 const field =
   'w-full rounded-md border border-zinc-400 bg-white py-3 pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 outline-hidden transition-colors hover:border-zinc-500 focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10'
 
 export function LoginPage() {
+  useApplyBrand(hostBrand())
+  const brand = useBrand()
   const { login } = useAuth()
   const navigate = useNavigate()
   const [salon, setSalon] = useState(getSalon())
@@ -55,13 +58,13 @@ export function LoginPage() {
     <div className="flex min-h-dvh bg-zinc-50 font-sans text-zinc-900">
       {/* Painel da marca */}
       <aside className="on-ink hidden w-[44%] flex-col justify-between gap-10 bg-navalha px-12 py-10 lg:flex xl:px-16 xl:py-12">
-        <Link to="/" aria-label="Seu Barbeiro, apresentação" className="self-start">
+        <Link to="/" aria-label={`${brand.name}, apresentação`} className="self-start">
           <BrandLogo negative size="lg" />
         </Link>
 
         <div className="max-w-md">
           <h2 className="text-[32px] font-semibold leading-[40px] text-espuma">
-            Gestão para barbearias e salões
+            {brand.tagline}
           </h2>
           <p className="mt-4 text-base leading-relaxed text-toalha/80">
             Agenda, clientes, Pix e caixa no mesmo painel, no computador do balcão ou no celular.
@@ -71,14 +74,14 @@ export function LoginPage() {
         <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
           <span>Cada salão tem o próprio banco de dados.</span>
           <Link to="/privacidade" className="underline underline-offset-2 hover:text-espuma">Privacidade</Link>
-          <span>© {new Date().getFullYear()} Seu Barbeiro</span>
+          <span>© {new Date().getFullYear()} {brand.name}</span>
         </p>
       </aside>
 
       {/* Formulário */}
       <main className="flex flex-1 flex-col">
         <div className="on-ink bg-navalha px-5 pb-5 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-8 lg:hidden">
-          <Link to="/" aria-label="Seu Barbeiro, apresentação">
+          <Link to="/" aria-label={`${brand.name}, apresentação`}>
             <BrandLogo negative />
           </Link>
         </div>
@@ -105,7 +108,7 @@ export function LoginPage() {
                       autoCapitalize="none"
                       value={salon}
                       onChange={(e) => setSalon(e.target.value.toLowerCase())}
-                      placeholder="ex.: seu-barbeiro"
+                      placeholder={`ex.: ${brand.slugExample}`}
                       className={field}
                     />
                   </div>

@@ -827,7 +827,7 @@ function CommissionsTab({ from, to }: { from: string; to: string }) {
 
       {(data?.length ?? 0) === 0 ? (
         <div className="rounded-2xl border border-zinc-200 bg-white py-16 text-center text-sm text-zinc-400">
-          Nenhum barbeiro cadastrado ou sem atendimentos no período.
+          Nenhum profissional cadastrado ou sem atendimentos no período.
         </div>
       ) : (
         <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">

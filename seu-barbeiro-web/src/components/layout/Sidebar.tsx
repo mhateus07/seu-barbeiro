@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/auth-state'
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { BrandLogo } from '../ui/BrandMark'
+import { useBrand } from '../../brand/brand'
 import {
   LayoutDashboard,
   CalendarDays,
@@ -32,7 +33,7 @@ const navItems = [
   { to: '/financeiro', label: 'Financeiro', icon: Wallet },
   { to: '/assinaturas', label: 'Assinaturas', icon: Repeat },
   { to: '/clientes', label: 'Clientes', icon: Users },
-  { to: '/barbeiros', label: 'Profissionais', icon: Scissors },
+  { to: '/profissionais', label: 'Profissionais', icon: Scissors },
   { to: '/servicos', label: 'Serviços', icon: Sparkles },
   { to: '/vitrine', label: 'Vitrine', icon: ImageIcon },
   { to: '/configuracoes', label: 'Configurações', icon: Settings },
@@ -45,6 +46,7 @@ interface SidebarProps {
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const { admin } = useAuth()
+  const brand = useBrand()
   const BOOKING_URL = bookingLink()
   const { data: identity } = useQuery({
     queryKey: ['identity'],
@@ -171,7 +173,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         {identity?.address && <p className="text-[11px] leading-snug text-zinc-500">{identity.address}</p>}
         {identity?.phone && <p className="hora text-[11px] text-zinc-500">{formatPhone(identity.phone)}</p>}
         {identity?.logo && (
-          <p className="pt-1 text-[11px] text-zinc-500">Feito com Seu Barbeiro</p>
+          <p className="pt-1 text-[11px] text-zinc-500">Feito com {brand.name}</p>
         )}
       </div>
     </aside>

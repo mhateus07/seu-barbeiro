@@ -26,6 +26,8 @@ async function main() {
     })
   for (const [key, value] of Object.entries({
     shop_name: name,
+    // Salão novo nasce como salão de beleza (Belaza); SHOP_SEGMENT=barbershop para barbearia.
+    shop_segment: process.env.SHOP_SEGMENT === 'barbershop' ? 'barbershop' : 'beauty',
     shop_phone: process.env.SHOP_PHONE || '',
     shop_address: process.env.SHOP_ADDRESS || '',
     shop_instagram: process.env.SHOP_INSTAGRAM || '',

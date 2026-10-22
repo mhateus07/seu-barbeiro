@@ -30,6 +30,7 @@ import type {
 import { formatCurrency } from '../../utils/formatCurrency'
 import { PixPanel } from '../../components/public/PixPanel'
 import { getSalon } from '../../api/salon'
+import { segmentBrand, useApplyBrand, useBrand } from '../../brand/brand'
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6
 
@@ -68,6 +69,8 @@ export function BookingPage() {
   const [barbers, setBarbers] = useState<PublicBarber[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  useApplyBrand(info ? segmentBrand(info.segment) : undefined)
+  const brand = useBrand()
 
   const [selectedServices, setSelectedServices] = useState<string[]>([])
   const [selectedBarber, setSelectedBarber] = useState<string>('')
@@ -244,7 +247,7 @@ export function BookingPage() {
       <header className="border-b border-white/10 bg-navalha">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
           <img
-            src={info?.shopLogo || '/favicon.svg'}
+            src={info?.shopLogo || brand.favicon}
             alt="Logo do salão"
             className="h-11 w-11 rounded-xl object-cover ring-1 ring-white/15"
           />
@@ -914,7 +917,7 @@ export function BookingPage() {
       </div>
 
       <footer className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-x-3 gap-y-1 px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-6 text-xs text-zinc-500">
-        <span>Agendamento online por Seu Barbeiro</span>
+        <span>Agendamento online por {brand.name}</span>
         <a href="/privacidade" className="underline underline-offset-2 hover:text-zinc-300">
           Privacidade
         </a>

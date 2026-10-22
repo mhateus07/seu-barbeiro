@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate, useLocation } from 'react-router-dom'
 import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import { MotionConfig, motion, useReducedMotion, useScroll, useTransform } from 'motion/react'
 import { useAuth } from '../../contexts/auth-state'
+import { hostBrand, useApplyBrand } from '../../brand/brand'
 import { BrandLogo, BrandWordmark } from '../../components/ui/BrandMark'
 import { LossCalculator } from './LossCalculator'
 import { ScreenVideo } from './ScreenVideo'
@@ -370,6 +371,16 @@ function HowItWorks() {
 }
 
 export function HomePage() {
+  // A apresentação ainda é só do Seu Barbeiro; no domínio da Belaza a raiz leva
+  // à entrada até o site dela existir.
+  const belaza = hostBrand() === 'belaza'
+  const { search } = useLocation()
+  useApplyBrand(belaza ? undefined : 'seu-barbeiro')
+  if (belaza) return <Navigate to={{ pathname: '/login', search }} replace />
+  return <SeuBarbeiroHome />
+}
+
+function SeuBarbeiroHome() {
   // Quem já tem sessão aberta vê a apresentação também, com atalho para o painel.
   const { isAuthenticated } = useAuth()
   const panel = isAuthenticated ? { to: '/operacao', label: 'Abrir painel' } : { to: '/login', label: 'Entrar' }
