@@ -7,6 +7,7 @@ import {
 import { normalizePhone } from '../../utils/phone'
 import { prisma } from '../../lib/prisma'
 import { getSettings } from '../settings/settings.service'
+import { formatWhen } from '../../utils/dates'
 import { manageUrl } from '../appointments/scheduling'
 import {
   depositFor,
@@ -187,7 +188,7 @@ export async function createPublicAppointment(data: {
             clientId: a.clientId,
             phone: a.client.phone,
             dedupeKey: `confirmation:${a.id}`,
-            message: `Olá, ${a.client.name}! Agendamento registrado para ${a.startsAt.toLocaleString('pt-BR')}, com ${a.barber.name}. ${settings.shop_name}.${manageUrl(a.manageToken)}`,
+            message: `Olá, ${a.client.name}! Agendamento registrado para ${formatWhen(a.startsAt)}, com ${a.barber.name}. ${settings.shop_name}.${manageUrl(a.manageToken)}`,
           },
           update: {},
         })

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { isAxiosError } from 'axios'
 import {
   CalendarClock,
@@ -39,6 +39,8 @@ const localDay = (d: Date) => d.toLocaleDateString('sv-SE')
 
 export function ManagePage() {
   const { token = '' } = useParams()
+  const [params] = useSearchParams()
+  const autoConfirm = useRef(params.get('confirmar') === '1')
   const [data, setData] = useState<ManagedAppointment | null>(null)
   const [loadError, setLoadError] = useState('')
   const [mode, setMode] = useState<'view' | 'reschedule' | 'cancel'>('view')
@@ -107,6 +109,13 @@ export function ManagePage() {
       setBusy(false)
     }
   }
+
+  // O lembrete do WhatsApp manda o link com ?confirmar=1: abrir já confirma.
+  useEffect(() => {
+    if (!data || !autoConfirm.current) return
+    autoConfirm.current = false
+    if (data.canConfirm) void act('confirm')
+  })
 
   if (loadError)
     return (

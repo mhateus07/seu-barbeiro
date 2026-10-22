@@ -8,6 +8,7 @@ import {
 } from '../../lib/mercadopago'
 import { runSchedule, type Tx } from '../appointments/scheduling'
 import { getSettings } from '../settings/settings.service'
+import { formatWhen } from '../../utils/dates'
 import { notifyStaff } from '../push/push.service'
 
 export const newToken = () => randomBytes(24).toString('hex')
@@ -168,7 +169,7 @@ export async function markPixPaid(chargeId: string, payment: MpPayment) {
             clientId: a.clientId,
             phone: a.client.phone,
             dedupeKey: `confirmation:${a.id}`,
-            message: `Olá, ${a.client.name}! Recebemos o sinal de ${money(amount)}. Seu horário está confirmado para ${a.startsAt.toLocaleString('pt-BR')}, com ${a.barber.name}. ${settings.shop_name}. Para remarcar ou cancelar: ${manageLink(a.manageToken)}`,
+            message: `Olá, ${a.client.name}! Recebemos o sinal de ${money(amount)}. Seu horário está confirmado para ${formatWhen(a.startsAt)}, com ${a.barber.name}. ${settings.shop_name}. Para remarcar ou cancelar: ${manageLink(a.manageToken)}`,
           },
           update: {},
         })

@@ -32,10 +32,13 @@ export function OfferPage() {
           <p>Oferta expirada ou indisponível.</p>
         ) : data ? (
           <>
-            <p>{new Date(data.startsAt).toLocaleString('pt-BR')}</p>
+            <p className="first-letter:uppercase">
+              {new Date(data.startsAt).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })}, às{' '}
+              {new Date(data.startsAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </p>
             <p>
               Confirme até{' '}
-              {new Date(data.expiresAt).toLocaleTimeString('pt-BR')}.
+              {new Date(data.expiresAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.
             </p>
             <button
               disabled={busy || done}

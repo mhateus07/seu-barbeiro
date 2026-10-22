@@ -26,3 +26,11 @@ export function parseMoment(value?: string) {
 export const isDateInput = (value: string) =>
   (DATE_ONLY.test(value) || !Number.isNaN(Date.parse(value))) &&
   !Number.isNaN(parseDay(value).getTime())
+
+/** Data e hora para mensagens ao cliente: "sexta-feira, 23/10, às 10:00". */
+export function formatWhen(date: Date) {
+  const weekday = date.toLocaleDateString('pt-BR', { weekday: 'long' })
+  const day = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+  const time = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  return `${weekday}, ${day}, às ${time}`
+}

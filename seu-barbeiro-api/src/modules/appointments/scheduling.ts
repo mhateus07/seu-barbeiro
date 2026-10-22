@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { Prisma } from '@prisma/client'
 import { prisma, currentSalon } from '../../lib/prisma'
 import { getSettings } from '../settings/settings.service'
+import { formatWhen } from '../../utils/dates'
 
 export type Tx = Prisma.TransactionClient
 export const activeStatuses = [
@@ -327,7 +328,7 @@ export async function bookInTransaction(
         clientId: input.clientId,
         phone: appointment.client.phone,
         dedupeKey: `confirmation:${appointment.id}`,
-        message: `Olá, ${appointment.client.name}! Agendamento registrado para ${startsAt.toLocaleString('pt-BR')}, com ${appointment.barber.name}. ${settings.shop_name}.${manageUrl(appointment.manageToken)}`,
+        message: `Olá, ${appointment.client.name}! Agendamento registrado para ${formatWhen(startsAt)}, com ${appointment.barber.name}. ${settings.shop_name}.${manageUrl(appointment.manageToken)}`,
       },
     })
   return appointment
@@ -337,6 +338,12 @@ export function manageUrl(token: string | null) {
   const base = process.env.PUBLIC_WEB_URL
   if (!token || !base) return ''
   return ` Para confirmar, remarcar ou cancelar: ${base.replace(/\/$/, '')}/meu-horario/${token}?salon=${currentSalon().slug}`
+}
+/** Link do lembrete: abrir já confirma a presença (um toque no WhatsApp). */
+export function confirmUrl(token: string | null) {
+  const base = process.env.PUBLIC_WEB_URL
+  if (!token || !base) return ''
+  return ` Toque para confirmar sua presença: ${base.replace(/\/$/, '')}/meu-horario/${token}?salon=${currentSalon().slug}&confirmar=1 (pelo mesmo link você remarca ou cancela).`
 }
 export async function runSchedule<T>(work: (tx: Tx) => Promise<T>) {
   return prisma.$transaction(

@@ -2,9 +2,10 @@ import { fillCancelledSlots } from '../operations/waitlist.service'
 import { NotificationType, NotificationStatus } from '@prisma/client'
 import { prisma, salons, salonContext } from '../../lib/prisma'
 import { getSettings } from '../settings/settings.service'
+import { formatWhen } from '../../utils/dates'
 import { normalizePhone } from '../../utils/phone'
 import { randomBytes } from 'node:crypto'
-import { manageUrl } from '../appointments/scheduling'
+import { confirmUrl } from '../appointments/scheduling'
 import { expireDeposits } from '../payments/pix.service'
 import { runSubscriptionCycle } from '../subscriptions/subscriptions.service'
 import { assertOutboundUrl } from '../../utils/outbound-url'
@@ -56,7 +57,7 @@ export async function sendPendingReminders() {
   )
   const pending = appointments.filter((a) => !queued.has(reminderKey(a)))
   for (const a of pending) {
-    const date = a.startsAt.toLocaleString('pt-BR')
+    const date = formatWhen(a.startsAt)
     // Atendimentos antigos ganham o link de autoatendimento no primeiro lembrete.
     const token =
       a.manageToken ??
@@ -72,7 +73,7 @@ export async function sendPendingReminders() {
       clientId: a.clientId,
       appointmentId: a.id,
       dedupeKey: reminderKey(a),
-      message: `Olá, ${a.client.name}! Lembrete do seu atendimento em ${date}, com ${a.barber.name}. ${settings.shop_name}.${manageUrl(token) || ` Para alterar, entre em contato: ${settings.shop_phone}.`}`,
+      message: `Olá, ${a.client.name}! Lembrete do seu atendimento de ${date}, com ${a.barber.name}. ${settings.shop_name}.${confirmUrl(token) || ` Para alterar, entre em contato: ${settings.shop_phone}.`}`,
     })
   }
   return { sent: 0, failed: 0, queued: pending.length }

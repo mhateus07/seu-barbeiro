@@ -242,7 +242,9 @@ export async function getCommissions(from?: string, to?: string) {
     return {
       barberId: barber.id,
       barberName: barber.name,
-      commissionRate: totalRevenue ? (commission / totalRevenue) * 100 : rate,
+      commissionRate: totalRevenue
+        ? Math.round((commission / totalRevenue) * 10000) / 100
+        : rate,
       totalRevenue,
       commission,
       appointmentsCount: barberAppointments.length,

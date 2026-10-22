@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { prisma, currentSalon } from '../../lib/prisma'
 import { assertAvailability, runSchedule, Tx } from '../appointments/scheduling'
 import { getSettings } from '../settings/settings.service'
+import { formatWhen } from '../../utils/dates'
 
 export async function offerWaitlist(
   tx: Tx,
@@ -58,7 +59,7 @@ export async function offerWaitlist(
       clientId: entry.clientId,
       phone: entry.client.phone,
       dedupeKey: `waitlist:${token}`,
-      message: `Olá, ${entry.client.name}! Surgiu uma vaga em ${startsAt.toLocaleString('pt-BR')}. Reserve em até 15 minutos: ${link}`,
+      message: `Olá, ${entry.client.name}! Surgiu uma vaga para ${formatWhen(startsAt)}. Reserve em até 15 minutos: ${link}`,
     },
   })
   return { link, expiresAt }
