@@ -450,7 +450,10 @@ export function BookingPage() {
                             <div className="flex items-center gap-3 mt-1.5">
                               <span className="flex items-center gap-1 text-xs text-zinc-500">
                                 <Clock className="h-3 w-3" />
-                                {service.durationMin} min
+                                {service.durationMin +
+                                  (service.processingMin ?? 0) +
+                                  (service.finishingMin ?? 0)}{' '}
+                                min
                               </span>
                             </div>
                           </div>

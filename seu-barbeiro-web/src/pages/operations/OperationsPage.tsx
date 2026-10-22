@@ -397,7 +397,6 @@ export function OperationsPage() {
   function saved() {
     toast.success('Tudo certo, alteração salva.')
     void qc.invalidateQueries()
-    setSelected(null)
     setRecords(null)
   }
   function confirm(
@@ -569,8 +568,19 @@ export function OperationsPage() {
         }),
     })
   }
+  // O painel continua aberto após salvar e some se o atendimento sair do período exibido.
   const selectedFresh =
-    agenda?.appointments.find((a) => a.id === selected?.id) || selected
+    selected &&
+    (agenda ? agenda.appointments.find((a) => a.id === selected.id) : selected)
+  const balance = selectedFresh
+    ? Number(selectedFresh.totalPrice) -
+      Number(selectedFresh.discount) -
+      Number(selectedFresh.subscriptionCovered ?? 0) +
+      selectedFresh.items.reduce((sum, i) => sum + Number(i.unitPrice) * i.quantity, 0) -
+      selectedFresh.payments
+        .filter((p) => !p.refundedAt)
+        .reduce((sum, p) => sum + Number(p.amount), 0)
+    : 0
   const day = parseISO(date)
   const step = (direction: number) =>
     setDate(format(addDays(day, direction * days), 'yyyy-MM-dd'))
@@ -1712,18 +1722,7 @@ export function OperationsPage() {
               ))}
               <p className="font-bold">
                 Saldo:{' '}
-                {money(
-                  Number(selectedFresh.totalPrice) -
-                    Number(selectedFresh.discount) -
-                    Number(selectedFresh.subscriptionCovered ?? 0) +
-                    selectedFresh.items.reduce(
-                      (sum, i) => sum + Number(i.unitPrice) * i.quantity,
-                      0,
-                    ) -
-                    selectedFresh.payments
-                      .filter((p) => !p.refundedAt)
-                      .reduce((sum, p) => sum + Number(p.amount), 0),
-                )}
+                {money(balance)}
               </p>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -1738,6 +1737,7 @@ export function OperationsPage() {
                           key: 'amount',
                           label: 'Valor recebido',
                           type: 'number',
+                          value: balance > 0 ? balance.toFixed(2) : undefined,
                         },
                         {
                           key: 'method',

@@ -486,6 +486,8 @@ async function criar() {
     })
     closed++
   }
+  // O caixa de hoje fica aberto desde a manhã, com o dinheiro recebido até agora.
+  await db.cashSession.create({ data: { openedAt: day(0, 8, 40), openedById: 'demo', openingAmount: 150 } })
 
   // ─── relacionamento: lista de espera, convites e fichas técnicas ───────────
   for (const [offset, client] of [[1, clients[40]], [2, clients[41]], [3, clients[42]]])

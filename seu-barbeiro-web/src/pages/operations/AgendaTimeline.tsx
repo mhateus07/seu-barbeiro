@@ -405,7 +405,9 @@ export function AgendaTimeline({
 
               {pieces.map((p) => {
                 const a = p.appointment
-                const h = Math.max(28, (p.bottom - p.top) * PX - 2)
+                const h = Math.max(22, (p.bottom - p.top) * PX - 2)
+                // Até 20 min o card não comporta duas linhas: horário e nome lado a lado.
+                const compact = h < 32
                 const canMove = canEdit && movable(a)
                 const services = a.services.map((s) => s.service.name).join(' + ')
                 return (
@@ -427,7 +429,7 @@ export function AgendaTimeline({
                     }}
                     onClick={() => select(a)}
                     title={`${a.client.name} · ${services} · ${statusLabels[a.status]}${canMove ? ' · arraste para reagendar' : ''}`}
-                    className={`group absolute z-10 overflow-hidden rounded-lg border px-2 py-1 text-left transition-[border-color,box-shadow] hover:z-20 active:shadow-lift ${statusStyles[a.status] || 'border-zinc-200 bg-zinc-50'} ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                    className={`group absolute z-10 overflow-hidden rounded-lg border px-2 ${compact ? 'flex items-center gap-1.5 py-0' : 'py-1'} text-left transition-[border-color,box-shadow] hover:z-20 active:shadow-lift ${statusStyles[a.status] || 'border-zinc-200 bg-zinc-50'} ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
                     style={{
                       top: (p.top - start) * PX + 1,
                       height: h,
@@ -435,14 +437,14 @@ export function AgendaTimeline({
                       width: `calc(${100 / p.lanes}% - 8px)`,
                     }}
                   >
-                    <p className="hora flex items-center gap-1 truncate text-[10px] font-medium text-zinc-600">
+                    <p className="hora flex shrink-0 items-center gap-1 truncate text-[10px] font-medium text-zinc-600">
                       {showBarber && (
                         <span
                           className="h-1.5 w-1.5 shrink-0 rounded-full"
                           style={{ background: barberColor(agenda, a.barber.id) }}
                         />
                       )}
-                      {time(a.startsAt)}–{time(a.endsAt)}
+                      {compact ? time(a.startsAt) : `${time(a.startsAt)}–${time(a.endsAt)}`}
                     </p>
                     {a.depositAmount && !a.depositPaidAt && (
                       <span

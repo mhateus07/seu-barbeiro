@@ -53,9 +53,10 @@ export function Header({ onMenuClick }: HeaderProps) {
   })
   const initials = (admin?.name || '?')
     .split(/\s+/)
+    .filter((part) => /^\p{L}/u.test(part))
     .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('')
+    .map((part) => part[0].toUpperCase())
+    .join('') || '?'
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50 px-3 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] md:px-6 md:py-3">
