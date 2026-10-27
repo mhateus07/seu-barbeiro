@@ -1,5 +1,26 @@
 # Changelog — Seu Barbeiro
 
+## [22/10/2026] — Pronto para o vídeo de demonstração
+
+### Correções de fluxo
+- **Agendamento online**: o cartão do serviço mostra a duração total (atendimento +
+  pausa + finalização), igual ao resumo
+- **Agenda**: atendimentos curtos aparecem num cartão compacto (hora e nome) sem cortar
+  o texto; o painel do atendimento fica aberto e atualizado depois de cada ação
+- **Recebimento**: o valor já vem preenchido com o saldo que falta pagar
+- **Profissional**: qualquer endereço do painel leva direto para a agenda
+- **Topo**: iniciais do nome ignoram palavras que não começam com letra
+- **Dados de demonstração**: o caixa do dia já vem aberto
+
+### Mensagens ao cliente
+- O lembrete do WhatsApp traz um link que confirma a presença em um toque
+- Datas no formato "sábado, 24/10, às 10:00" nas mensagens e na página da vaga oferecida
+- Comissão média arredondada em duas casas
+
+### Marca
+- A marca Belaza (salões de beleza) foi revertida: o Seu Barbeiro segue só para
+  barbearias. A Belaza vai virar um produto separado
+
 ## [20/10/2026] — Revisão geral: segurança, permissões, datas e CI
 
 Revisão completa do projeto: segurança da API e da infraestrutura, banco e operação,
