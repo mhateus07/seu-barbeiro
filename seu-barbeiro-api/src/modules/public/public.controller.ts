@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { Request, Response } from 'express'
 import * as PublicService from './public.service'
+import { personName } from '../../utils/person-name'
 
 // Erros são tratados pelo handler de public.routes.ts.
 
@@ -44,7 +45,7 @@ export async function getSlots(req: Request, res: Response) {
 export async function createAppointment(req: Request, res: Response) {
   const data = z
     .object({
-      clientName: z.string().trim().min(2).max(120),
+      clientName: personName,
       clientPhone: z.string().min(10).max(25),
       clientEmail: z.string().email().optional().or(z.literal('')),
       barberId: z.union([z.string().uuid(), z.literal('any')]),

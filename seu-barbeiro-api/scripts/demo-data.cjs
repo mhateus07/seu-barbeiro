@@ -4,6 +4,8 @@
 //   node scripts/demo-data.cjs criar            → só roda com o salão sem clientes/atendimentos
 //   node scripts/demo-data.cjs limpar --sim     → apaga clientes, agenda, financeiro, planos etc.
 //                                                 (mantém acessos da equipe e configurações)
+//   node scripts/demo-data.cjs renovar          → completa a agenda dos próximos 14 dias e fecha os
+//                                                 horários passados; não apaga nada e recusa salão real
 //   node scripts/demo-data.cjs acessos --sim    → apaga TODOS os acessos e cria os de demonstração
 //                                                 (dono, recepção e profissional), com senhas novas
 //
@@ -87,6 +89,104 @@ async function acessos() {
   })
   console.log(`Salão ${slug}: acessos anteriores apagados. Novos acessos de demonstração:`)
   console.table(created)
+}
+
+/** Trava de segurança: `renovar` só roda em salão comprovadamente de demonstração. */
+async function assertDemoSalon() {
+  const [admins, realClients, whatsapp] = await Promise.all([
+    db.admin.findMany({ select: { email: true } }),
+    db.client.count({ where: { NOT: { OR: [{ phone: { contains: '90000' } }, { phone: { startsWith: 'removido-' } }] } } }),
+    db.settings.findUnique({ where: { key: 'whatsapp_enabled' } }),
+  ])
+  if (
+    !admins.length ||
+    admins.some((a) => !a.email.endsWith('@seubarbeiro.demo')) ||
+    realClients ||
+    whatsapp?.value === 'true'
+  )
+    throw new Error('Este salão não é de demonstração. Nada foi alterado.')
+}
+
+async function renovar() {
+  await assertDemoSalon()
+  seed = Date.now() % 2147483648
+  const now = new Date()
+  // Horários que já passaram não podem ficar abertos na agenda.
+  const stale = await db.appointment.findMany({
+    where: { status: { in: ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS'] }, endsAt: { lt: now } },
+  })
+  for (const a of stale) {
+    const noShow = chance(0.06)
+    await db.appointment.update({
+      where: { id: a.id },
+      data: { status: noShow ? 'NO_SHOW' : 'COMPLETED', loyaltyCredited: !noShow },
+    })
+    const due = money(Number(a.totalPrice) - Number(a.discount) - Number(a.subscriptionCovered))
+    if (!noShow && due > 0)
+      await db.payment.create({
+        data: { amount: due, method: pick(['PIX', 'PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD']), paidAt: a.endsAt, appointmentId: a.id },
+      })
+  }
+  const [barbers, services, clients, schedules] = await Promise.all([
+    db.barber.findMany({ where: { isActive: true } }),
+    db.service.findMany({ where: { isActive: true, processingMin: 0, finishingMin: 0 } }),
+    db.client.findMany({ where: { phone: { contains: '90000' } }, select: { id: true } }),
+    db.workSchedule.findMany(),
+  ])
+  if (!services.length || !clients.length) throw new Error('Rode "criar" primeiro.')
+  let created = 0
+  for (let offset = 1; offset <= 14; offset++) {
+    const weekday = day(offset).getDay()
+    const fill = Math.max(0.15, 0.7 - offset * 0.04)
+    for (const barber of barbers) {
+      const schedule = schedules.find((s) => s.barberId === barber.id && s.weekday === weekday)
+      if (!schedule) continue
+      const taken = await db.appointment.count({
+        where: { barberId: barber.id, startsAt: { gte: day(offset), lt: day(offset + 1) } },
+      })
+      if (taken) continue
+      const allowed = services.filter((s) => !barber.serviceIds.length || barber.serviceIds.includes(s.id))
+      if (!allowed.length) continue
+      let cursor = schedule.openMinute
+      while (cursor < schedule.closeMinute) {
+        const service = pick(allowed)
+        const end = cursor + service.durationMin
+        const crossesLunch = cursor < 13 * 60 && end > 12 * 60
+        if (end > schedule.closeMinute) break
+        if (crossesLunch) {
+          cursor = 13 * 60
+          continue
+        }
+        if (!chance(fill)) {
+          cursor += pick([15, 30, 45])
+          continue
+        }
+        const startsAt = day(offset, 0, cursor)
+        const endsAt = addMin(startsAt, service.durationMin)
+        await db.appointment.create({
+          data: {
+            clientId: pick(clients).id,
+            barberId: barber.id,
+            startsAt,
+            endsAt,
+            status: chance(0.3) ? 'CONFIRMED' : 'SCHEDULED',
+            totalPrice: service.price,
+            commissionRateSnapshot: barber.commissionRate ?? 0,
+            source: chance(0.45) ? 'ONLINE' : 'DIRECT',
+            manageToken: token(),
+            createdAt: addMin(now, -60 * 24),
+            services: {
+              create: { serviceId: service.id, priceSnapshot: service.price, durationSnapshot: service.durationMin },
+            },
+            segments: { create: { barberId: barber.id, startsAt, endsAt, kind: 'ACTIVE' } },
+          },
+        })
+        created++
+        cursor = end
+      }
+    }
+  }
+  console.log(`Salão ${slug}: demonstração renovada (${stale.length} horários fechados, ${created} novos).`)
 }
 
 async function criar() {
@@ -446,6 +546,7 @@ async function criar() {
     const cp = await db.commissionPayment.create({
       data: { barberId: b.id, periodFrom: prevFrom, periodTo: prevTo, totalRevenue: revenue, commissionAmount: commission, commissionRate: b.rate, advancesDeducted: advance, paidAt, notes: 'Pago por Pix' },
     })
+    await db.appointment.updateMany({ where: { id: { in: done.map((a) => a.id) } }, data: { commissionPaymentId: cp.id } })
     if (advance) {
       const given = new Date(now.getFullYear(), now.getMonth() - 1, 15, 19)
       const adv = await db.barberAdvance.create({ data: { barberId: b.id, amount: advance, notes: 'Adiantamento da quinzena', givenAt: given, settledInId: cp.id } })
@@ -523,7 +624,7 @@ async function criar() {
   console.log(`Salão ${slug}: demonstração criada`, counts)
 }
 
-;(mode === 'criar' ? criar() : mode === 'limpar' ? limpar() : mode === 'acessos' ? acessos() : Promise.reject(new Error('Use: criar | limpar --sim | acessos --sim')))
+;(mode === 'criar' ? criar() : mode === 'limpar' ? limpar() : mode === 'acessos' ? acessos() : mode === 'renovar' ? renovar() : Promise.reject(new Error('Use: criar | renovar | limpar --sim | acessos --sim')))
   .catch((error) => {
     console.error(error.message)
     process.exitCode = 1

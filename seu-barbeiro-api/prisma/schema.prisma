@@ -115,6 +115,9 @@ model Appointment {
   subscriptionId String?
   subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
   subscriptionCovered Decimal @default(0) @db.Decimal(10, 2)
+  // Pagamento de comissão em que este atendimento foi acertado.
+  commissionPaymentId String?
+  commissionPayment CommissionPayment? @relation(fields: [commissionPaymentId], references: [id], onDelete: SetNull)
   pixCharges PixCharge[]
   items OrderItem[]
   segments AppointmentSegment[]
@@ -137,6 +140,7 @@ model Appointment {
   @@index([status])
   @@index([status, startsAt])
   @@index([clientId, startsAt])
+  @@index([barberId, commissionPaymentId])
   @@map("appointments")
 }
 
@@ -264,6 +268,7 @@ model CommissionPayment {
   barber   Barber @relation(fields: [barberId], references: [id])
   barberId String
   advances BarberAdvance[]
+  appointments Appointment[]
 
   @@index([barberId])
   @@map("commission_payments")
@@ -409,6 +414,8 @@ model Product {
   price Decimal @db.Decimal(10, 2)
   cost Decimal @db.Decimal(10, 2)
   stock Int @default(0)
+  // Abaixo disso o painel avisa para repor (0 = sem aviso).
+  minStock Int @default(0)
   isActive Boolean @default(true)
   @@map("products")
 }

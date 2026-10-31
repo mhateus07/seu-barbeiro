@@ -1,10 +1,14 @@
 // Preview uses only the disposable local test database. It never reads .env.
 process.env.DATABASE_URL =
+  process.env.PREVIEW_DATABASE_URL ||
   'postgresql://postgres:salon_test_only@127.0.0.1:55439/salon_test_b'
+if (!/@(127\.0\.0\.1|localhost):\d+\/salon_test_/.test(process.env.DATABASE_URL))
+  throw new Error('A prévia usa somente banco local salon_test_*')
 process.env.SALON_DATABASES = JSON.stringify({ demo: process.env.DATABASE_URL })
 process.env.DEFAULT_SALON = 'demo'
 process.env.JWT_SECRET = 'local_preview_only_not_a_production_secret'
-process.env.FRONTEND_URL = 'http://localhost:5173,http://127.0.0.1:5173'
+process.env.FRONTEND_URL =
+  process.env.FRONTEND_URL || 'http://localhost:5173,http://127.0.0.1:5173'
 process.env.PUBLIC_WEB_URL = 'http://localhost:5173'
 process.env.TZ = 'America/Sao_Paulo'
 process.env.NOTIFICATION_WORKER = 'false'
@@ -84,7 +88,7 @@ async function main() {
       },
     })
   }
-  app.listen(3333, '127.0.0.1', () =>
+  app.listen(Number(process.env.PREVIEW_PORT || 3333), '127.0.0.1', () =>
     console.log(
       'Demo: http://localhost:5173/login?salon=demo · demo@salon.local / Demo-salon-2026',
     ),

@@ -23,6 +23,7 @@ import cashRoutes from './modules/cash/cash.routes'
 import advancesRoutes from './modules/finances/advances.routes'
 import { salons, salonContext } from './lib/prisma'
 import { handleMercadoPagoNotification } from './modules/payments/pix.service'
+import { workerLastRun } from './lib/worker-status'
 
 const app = express()
 
@@ -72,9 +73,31 @@ app.post(
 app.use('/api/v1', salonMiddleware)
 
 // Rotas públicas
-app.get('/health', (_req, res) =>
-  res.json({ ok: true, time: new Date().toISOString() }),
-)
+// Saudável só se todos os bancos responderem. As rotinas automáticas aparecem
+// à parte: atraso nelas deve avisar o monitor, não reiniciar o container.
+app.get('/health', async (_req, res) => {
+  const time = new Date().toISOString()
+  try {
+    await Promise.all(
+      [...salons.values()].map((salon) =>
+        Promise.race([
+          salon.db.$queryRaw`SELECT 1`,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), 3000).unref(),
+          ),
+        ]),
+      ),
+    )
+  } catch {
+    return res.status(503).json({ ok: false, time })
+  }
+  const last = workerLastRun()
+  res.json({
+    ok: true,
+    time,
+    workerLastRun: last ? new Date(last).toISOString() : null,
+  })
+})
 app.use('/api/v1/auth', rateLimit(30, 60000), authRoutes)
 // Agendamentos e lista de espera pelo site: no máximo 10 por hora por aparelho,
 // para ninguém lotar a agenda do salão com horários falsos.

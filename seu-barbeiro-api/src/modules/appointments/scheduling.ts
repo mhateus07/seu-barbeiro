@@ -249,6 +249,8 @@ export async function bookInTransaction(
     visitId?: string
     /** Sinal exigido: o horário fica reservado até o prazo de pagamento. */
     deposit?: { amount: number; expiresAt: Date }
+    /** Encaixe no balcão: o cliente está ali, não precisa de confirmação. */
+    silent?: boolean
   },
 ) {
   const startsAt = new Date(input.startsAt)
@@ -320,7 +322,7 @@ export async function bookInTransaction(
   })
   const settings = await getSettings(tx)
   // Com sinal, a confirmação só sai depois que o Pix for pago.
-  if (settings.whatsapp_enabled === 'true' && !input.deposit)
+  if (settings.whatsapp_enabled === 'true' && !input.deposit && !input.silent)
     await tx.notificationLog.create({
       data: {
         type: 'APPOINTMENT_CONFIRMATION',
@@ -332,6 +334,44 @@ export async function bookInTransaction(
       },
     })
   return appointment
+}
+/** Mensagem ao cliente na fila, se o WhatsApp estiver ligado. Cliente removido não recebe. */
+export async function queueClientMessage(
+  tx: Tx,
+  input: {
+    appointmentId: string
+    clientId: string
+    phone: string
+    type: 'APPOINTMENT_CANCELLATION' | 'CUSTOM'
+    dedupeKey: string
+    message: string
+  },
+) {
+  const settings = await getSettings(tx)
+  if (settings.whatsapp_enabled !== 'true') return
+  if (input.phone.startsWith('removido-')) return
+  const { dedupeKey, ...data } = input
+  await tx.notificationLog.upsert({
+    where: { dedupeKey },
+    create: { ...data, dedupeKey },
+    update: {},
+  })
+}
+/** Atendimento desfeito: sem recebimento ativo, os produtos da comanda voltam ao estoque. */
+export async function releaseOrderItems(tx: Tx, appointmentId: string) {
+  const paid = await tx.payment.count({
+    where: { appointmentId, refundedAt: null },
+  })
+  if (paid) return
+  const items = await tx.orderItem.findMany({ where: { appointmentId } })
+  for (const item of items) {
+    if (item.productId)
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { stock: { increment: item.quantity } },
+      })
+    await tx.orderItem.delete({ where: { id: item.id } })
+  }
 }
 /** Trecho da mensagem com o link de autoatendimento (vazio sem PUBLIC_WEB_URL). */
 export function manageUrl(token: string | null) {

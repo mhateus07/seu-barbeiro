@@ -39,7 +39,7 @@ const STEPS = [
 
 const FACTS: [string, string][] = [
   ['0', 'aplicativo para o cliente baixar'],
-  ['24h', 'de agenda aberta pelo link do salão'],
+  ['24h', 'de agenda aberta pelo link da barbearia'],
   ['1', 'painel para agenda, caixa e comissão'],
   ['12', 'recursos no mesmo sistema'],
 ]
@@ -50,7 +50,7 @@ const GROUPS: { name: string; text: string; items: [string, string][] }[] = [
     text: 'Horário marcado sem você parar o corte.',
     items: [
       ['Agenda por profissional', 'Visão de dia e de semana, bloqueio de horário e arrastar para remarcar.'],
-      ['Agendamento online', 'Página do salão com serviços, profissionais e horários livres.'],
+      ['Agendamento online', 'Página da barbearia com serviços, profissionais e horários livres.'],
       ['Lembrete no WhatsApp', 'Mensagem automática com link para confirmar, remarcar ou cancelar.'],
       ['Lista de espera', 'Quando alguém cancela, a vaga é oferecida a quem estava esperando.'],
     ],
@@ -80,13 +80,9 @@ const GROUPS: { name: string; text: string; items: [string, string][] }[] = [
 const FAQ: [string, string][] = [
   [
     'O cliente precisa baixar aplicativo?',
-    'Não. A página de agendamento abre no navegador do celular, pelo link do seu salão.',
+    'Não. A página de agendamento abre no navegador do celular, pelo link da sua barbearia.',
   ],
-  [
-    'Serve para salão de beleza?',
-    'Sim. Cada profissional tem a própria agenda, e um serviço pode ter tempo de pausa, como na coloração, para encaixar outro cliente enquanto a tinta age.',
-  ],
-  [
+    [
     'E quando o cliente cancela?',
     'O horário volta para a agenda. Com a lista de espera ativa, a vaga é oferecida pelo WhatsApp a quem esperava por aquele dia.',
   ],
@@ -96,11 +92,11 @@ const FAQ: [string, string][] = [
   ],
   [
     'Meus dados ficam separados dos outros salões?',
-    'Ficam. Cada salão tem o próprio banco de dados.',
+    'Ficam. Cada barbearia tem o próprio banco de dados.',
   ],
   [
     'Quanto custa?',
-    'Fale com a gente no WhatsApp. Passamos os valores e mostramos o sistema com a agenda do seu salão.',
+    'Fale com a gente no WhatsApp. Passamos os valores e mostramos o sistema com a agenda da sua barbearia.',
   ],
 ]
 
@@ -214,7 +210,7 @@ function Hero() {
           transition={{ duration: 0.7, ease, delay: 0.45 }}
         >
           <p className="max-w-xl text-lg leading-relaxed text-zinc-600 sm:text-xl">
-            O Seu Barbeiro é o sistema do salão inteiro. O cliente marca pelo link, recebe o
+            O Seu Barbeiro é o sistema da barbearia inteira. O cliente marca pelo link, recebe o
             lembrete no WhatsApp e paga o sinal no Pix. Você vê a agenda da equipe, as comissões e o
             caixa do dia.
           </p>
@@ -327,7 +323,7 @@ function HowItWorks() {
                 </div>
               </div>
               <figcaption className="hora mx-auto mt-4 max-w-[280px] text-[13px] text-zinc-500 lg:mx-0">
-                Agendamento pelo celular, na página do salão.
+                Agendamento pelo celular, na página da barbearia.
               </figcaption>
             </figure>
           </div>
@@ -416,7 +412,7 @@ export function HomePage() {
                 index="02"
                 label="Faltas"
                 title="Quanto custa a cadeira vazia."
-                intro="Cada cliente que não aparece é um horário que ninguém mais pode usar. Coloque os números do seu salão e veja o valor no mês e no ano."
+                intro="Cada cliente que não aparece é um horário que ninguém mais pode usar. Coloque os números da sua barbearia e veja o valor no mês e no ano."
               />
               <Reveal className="mt-14 sm:mt-20">
                 <LossCalculator />
@@ -430,7 +426,7 @@ export function HomePage() {
               <SectionHead
                 index="03"
                 label="Recursos"
-                title="Tudo o que o salão usa, num painel só."
+                title="Tudo o que a barbearia usa, num painel só."
                 intro="No computador do balcão, no tablet ou no celular. O que muda num lugar aparece em todos."
               />
               <div className="mt-14 border-t border-zinc-900 sm:mt-20">
@@ -485,9 +481,9 @@ export function HomePage() {
                   rel="noopener noreferrer"
                   className="group mt-8 block max-w-5xl text-[clamp(2.4rem,7vw,6rem)] font-semibold leading-[0.98] tracking-[-0.045em] text-zinc-900"
                 >
-                  Veja o sistema com a agenda do seu{' '}
+                  Veja o sistema com a agenda da sua{' '}
                   <span className="whitespace-nowrap">
-                    salão
+                    barbearia
                     <ArrowUpRight
                       className="ml-2 inline h-[0.7em] w-[0.7em] align-[-0.05em] text-zinc-400 transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:text-zinc-900"
                       strokeWidth={2.25}

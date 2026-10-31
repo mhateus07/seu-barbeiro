@@ -25,6 +25,11 @@ export function PaymentsTab({
     client_change_min_hours: settings.client_change_min_hours ?? '2',
     subscription_notice_days: settings.subscription_notice_days ?? '3',
     subscription_grace_days: settings.subscription_grace_days ?? '5',
+    booking_min_minutes: settings.booking_min_minutes ?? '30',
+    booking_max_days: settings.booking_max_days ?? '60',
+    whatsapp_quiet_hours: settings.whatsapp_quiet_hours ?? '21:00-08:00',
+    reception_max_discount_percent: settings.reception_max_discount_percent ?? '100',
+    professional_can_receive: settings.professional_can_receive ?? 'false',
   })
   const set = (key: keyof typeof form) => (value: string) =>
     setForm((f) => ({ ...f, [key]: value }))
@@ -210,6 +215,64 @@ export function PaymentsTab({
             />
           </div>
         </div>
+      </section>
+
+      <section className={card}>
+        <div>
+          <p className="font-semibold text-zinc-900">Regras do dia a dia</p>
+          <p className="text-xs text-zinc-500">
+            Janela do agendamento online, horário das mensagens e permissões da equipe.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label className={label}>Antecedência mínima (minutos)</label>
+            <Input
+              type="number"
+              min="0"
+              value={form.booking_min_minutes}
+              onChange={(e) => set('booking_min_minutes')(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className={label}>Agenda aberta por (dias)</label>
+            <Input
+              type="number"
+              min="1"
+              max="730"
+              value={form.booking_max_days}
+              onChange={(e) => set('booking_max_days')(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className={label}>Pausa das mensagens</label>
+            <Input
+              placeholder="21:00-08:00"
+              value={form.whatsapp_quiet_hours}
+              onChange={(e) => set('whatsapp_quiet_hours')(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className={label}>Desconto máximo da recepção (%)</label>
+            <Input
+              type="number"
+              min="0"
+              max="100"
+              value={form.reception_max_discount_percent}
+              onChange={(e) => set('reception_max_discount_percent')(e.target.value)}
+            />
+          </div>
+        </div>
+        <label className="flex items-center gap-2 text-sm text-zinc-700">
+          <input
+            type="checkbox"
+            checked={form.professional_can_receive === 'true'}
+            onChange={(e) =>
+              set('professional_can_receive')(e.target.checked ? 'true' : 'false')
+            }
+          />
+          Profissional pode lançar recebimento nos próprios atendimentos
+        </label>
       </section>
 
       <div className="flex justify-end">

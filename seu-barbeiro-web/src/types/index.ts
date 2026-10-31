@@ -33,6 +33,8 @@ export interface BarberCommission {
   commissionRate: number
   totalRevenue: number
   commission: number
+  pendingCommission: number
+  isActive?: boolean
   appointmentsCount: number
   openAdvances?: number
 }

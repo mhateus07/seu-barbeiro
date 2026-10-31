@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, UserX, Scissors } from 'lucide-react'
+import { Plus, Pencil, UserX, Scissors, Link2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { bookingLink } from '../../api/salon'
 import { listBarbers, deleteBarber } from '../../api/barbers.api'
 import { BarberFormModal } from './BarberFormModal'
 import type { Barber } from '../../types'
@@ -96,6 +98,19 @@ export function BarbersPage() {
                 >
                   <Pencil className="h-3.5 w-3.5" />
                   Editar
+                </button>
+                <button
+                  onClick={() => {
+                    const link = `${bookingLink()}&barbeiro=${barber.id}`
+                    navigator.clipboard.writeText(link).then(
+                      () => toast.success(`Link de ${barber.name} copiado.`),
+                      () => toast.error('Não foi possível copiar o link.'),
+                    )
+                  }}
+                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 transition-colors"
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                  Copiar link
                 </button>
                 {isOwner && <button
                   onClick={() => { if (confirm(`Desativar ${barber.name}?`)) deleteMutation.mutate(barber.id) }}

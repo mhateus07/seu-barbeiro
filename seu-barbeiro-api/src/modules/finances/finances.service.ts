@@ -97,13 +97,55 @@ export async function deletePayment(id: string, reason = 'Estorno solicitado pel
     const payment = await tx.payment.findUnique({ where: { id } })
     if (!payment) throw new Error('Pagamento não encontrado')
     if (payment.refundedAt) return payment
-    return tx.payment.update({
+    const updated = await tx.payment.update({
       where: { id },
       data: {
         refundedAt: new Date(),
         refundReason: reason,
       },
     })
+    // Mensalidade estornada volta a ficar em aberto e o período pago é desfeito.
+    const charge = await tx.subscriptionCharge.findUnique({
+      where: { paymentId: id },
+      include: { subscription: true },
+    })
+    if (charge) {
+      await tx.subscriptionCharge.update({
+        where: { id: charge.id },
+        data: { status: 'PENDING', paidAt: null, paymentId: null },
+      })
+      const sub = charge.subscription
+      if (
+        sub.status !== 'CANCELLED' &&
+        sub.currentPeriodEnd?.getTime() === charge.periodEnd.getTime()
+      ) {
+        const previous = await tx.subscriptionCharge.findFirst({
+          where: {
+            subscriptionId: sub.id,
+            status: 'PAID',
+            id: { not: charge.id },
+          },
+          orderBy: { periodStart: 'desc' },
+        })
+        await tx.subscription.update({
+          where: { id: sub.id },
+          data: previous
+            ? {
+                status: 'PAST_DUE',
+                currentPeriodStart: previous.periodStart,
+                currentPeriodEnd: previous.periodEnd,
+              }
+            : { status: 'PENDING', currentPeriodStart: null, currentPeriodEnd: null },
+        })
+      }
+    }
+    // Sinal estornado deixa de valer: o horário não conta mais como garantido.
+    if (payment.appointmentId && payment.notes?.startsWith('Sinal via Pix'))
+      await tx.appointment.update({
+        where: { id: payment.appointmentId },
+        data: { depositAmount: null, depositPaidAt: null },
+      })
+    return updated
   })
 }
 
@@ -196,13 +238,46 @@ export async function deleteExpense(id: string) {
 
 // ─── COMMISSIONS ─────────────────────────────────────────────────────────────
 
+/**
+ * Valor do atendimento que gera comissão: serviços menos desconto. Com estorno,
+ * vale só o que continuou recebido (ou coberto por assinatura); atendimento
+ * ainda sem pagamento segue contando pelo valor do serviço.
+ */
+export function commissionBase(a: {
+  totalPrice: unknown
+  discount: unknown
+  subscriptionCovered?: unknown
+  payments?: { amount: unknown; refundedAt: Date | null }[]
+}) {
+  const value = Number(a.totalPrice) - Number(a.discount)
+  const payments = a.payments ?? []
+  if (!payments.some((p) => p.refundedAt)) return value
+  const kept =
+    Number(a.subscriptionCovered ?? 0) +
+    payments
+      .filter((p) => !p.refundedAt)
+      .reduce((sum, p) => sum + Number(p.amount), 0)
+  return Math.max(0, Math.min(value, kept))
+}
+
+const commissionOf = (a: Parameters<typeof commissionBase>[0] & { commissionRateSnapshot: unknown }) =>
+  (commissionBase(a) * Number(a.commissionRateSnapshot ?? 0)) / 100
+
 export async function getCommissions(from?: string, to?: string) {
   const fromDate = from
     ? parseDay(from)
     : new Date(new Date().getFullYear(), new Date().getMonth(), 1)
   const toDate = to ? parseDay(to, true) : new Date()
 
-  const barbers = await prisma.barber.findMany({ where: { isActive: true } })
+  // Quem foi desativado continua na lista enquanto tiver atendimento no período.
+  const barbers = await prisma.barber.findMany({
+    where: {
+      OR: [
+        { isActive: true },
+        { appointments: { some: { status: 'COMPLETED', startsAt: { gte: fromDate, lte: toDate } } } },
+      ],
+    },
+  })
   const openAdvances = await prisma.barberAdvance.groupBy({
     by: ['barberId'],
     where: { settledInId: null },
@@ -219,6 +294,9 @@ export async function getCommissions(from?: string, to?: string) {
       totalPrice: true,
       discount: true,
       commissionRateSnapshot: true,
+      subscriptionCovered: true,
+      commissionPaymentId: true,
+      payments: { select: { amount: true, refundedAt: true } },
     },
   })
 
@@ -227,18 +305,17 @@ export async function getCommissions(from?: string, to?: string) {
       (a) => a.barberId === barber.id,
     )
     const totalRevenue = barberAppointments.reduce(
-      (sum, a) => sum + Number(a.totalPrice) - Number(a.discount),
+      (sum, a) => sum + commissionBase(a),
       0,
     )
     const rate = Number(barber.commissionRate ?? 0)
     const commission = barberAppointments.reduce(
-      (sum, a) =>
-        sum +
-        ((Number(a.totalPrice) - Number(a.discount)) *
-          Number(a.commissionRateSnapshot ?? 0)) /
-          100,
+      (sum, a) => sum + commissionOf(a),
       0,
     )
+    const pendingCommission = barberAppointments
+      .filter((a) => !a.commissionPaymentId)
+      .reduce((sum, a) => sum + commissionOf(a), 0)
     return {
       barberId: barber.id,
       barberName: barber.name,
@@ -247,6 +324,8 @@ export async function getCommissions(from?: string, to?: string) {
         : rate,
       totalRevenue,
       commission,
+      pendingCommission: Math.round(pendingCommission * 100) / 100,
+      isActive: barber.isActive,
       appointmentsCount: barberAppointments.length,
       openAdvances: Number(
         openAdvances.find((a) => a.barberId === barber.id)?._sum.amount ?? 0,
@@ -274,29 +353,27 @@ export async function payCommission(input: PayCommissionInput) {
         periodTo: { gte: periodFrom },
       },
     })
-    if (overlap)
-      throw new Error('Já existe pagamento de comissão que inclui este período')
+    // Só entram os atendimentos ainda não acertados: o que foi concluído depois
+    // de um pagamento vira um complemento, sem repetir o que já foi pago.
     const appointments = await tx.appointment.findMany({
       where: {
         barberId: input.barberId,
         status: 'COMPLETED',
         startsAt: { gte: periodFrom, lte: periodTo },
+        commissionPaymentId: null,
       },
+      include: { payments: { select: { amount: true, refundedAt: true } } },
     })
-    const totalRevenue = appointments.reduce(
-      (sum, a) => sum + Number(a.totalPrice) - Number(a.discount),
-      0,
-    )
-    const commissionAmount = appointments.reduce(
-      (sum, a) =>
-        sum +
-        ((Number(a.totalPrice) - Number(a.discount)) *
-          Number(a.commissionRateSnapshot ?? 0)) /
-          100,
-      0,
-    )
     if (!appointments.length)
-      throw new Error('Sem atendimentos concluídos no período')
+      throw new Error(
+        overlap
+          ? 'Já existe pagamento de comissão que inclui este período'
+          : 'Sem atendimentos concluídos no período',
+      )
+    const totalRevenue = appointments.reduce((sum, a) => sum + commissionBase(a), 0)
+    const commissionAmount = appointments.reduce((sum, a) => sum + commissionOf(a), 0)
+    if (commissionAmount <= 0)
+      throw new Error('Sem comissão a pagar no período')
     // Vales em aberto até o fim do período são descontados, do mais antigo
     // ao mais novo, enquanto couberem na comissão. O restante fica para o próximo.
     const advances = await tx.barberAdvance.findMany({
@@ -330,6 +407,10 @@ export async function payCommission(input: PayCommissionInput) {
         paidAt: parseMoment(input.paidAt),
       },
       include: { barber: { select: { id: true, name: true } } },
+    })
+    await tx.appointment.updateMany({
+      where: { id: { in: appointments.map((a) => a.id) } },
+      data: { commissionPaymentId: payment.id },
     })
     if (deducted.length)
       await tx.barberAdvance.updateMany({

@@ -2,7 +2,7 @@ import { useEffect, useId, useState } from 'react'
 import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react'
 
 /*
-  Simulação do quanto o salão perde com faltas sem aviso. Os números são do
+  Simulação do quanto a barbearia perde com faltas sem aviso. Os números são do
   próprio dono; não afirmamos taxa de falta de ninguém. O quadro de 100
   quadrados mostra a mesma porcentagem: cada um é 1% dos atendimentos.
 */
@@ -111,7 +111,7 @@ export function LossCalculator() {
         </dl>
       </div>
 
-      {/* Números do salão e o quadro */}
+      {/* Números da barbearia e o quadro */}
       <div className="grid lg:grid-cols-[1.4fr_1fr]">
         <div className="grid gap-8 p-6 sm:grid-cols-2 sm:gap-x-10 sm:p-10">
           <Slider
@@ -168,7 +168,7 @@ export function LossCalculator() {
       </div>
 
       <p className="border-t border-zinc-200 px-6 py-4 text-xs leading-relaxed text-zinc-500 sm:px-10">
-        Simulação. Use os números do seu salão: quantos atendimentos você faz, quanto cobra em média
+        Simulação. Use os números da sua barbearia: quantos atendimentos você faz, quanto cobra em média
         e quantos clientes costumam não aparecer.
       </p>
     </div>

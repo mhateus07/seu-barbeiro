@@ -1,6 +1,6 @@
 # Seu Barbeiro
 
-Gestão para salões e barbearias.
+Gestão para barbearias.
 
 React + Vite no painel, Express + Prisma + PostgreSQL na API. A tela **Agenda e
 operação** reúne agenda por profissional, escalas, bloqueios, serviços por etapas,
@@ -55,7 +55,8 @@ vinculado ao salão; a cada requisição, o usuário é consultado no respectivo
   profissionais e serviços, pagamento de comissão e exclusão de despesas e vales
   também são só do dono. Estornos pedem motivo e ficam no registro de segurança.
 - **Profissional:** sua agenda, sua comissão do mês e fichas dos clientes que atende
-  (horário com ele que não foi cancelado nem terminou em falta).
+  (horário com ele que não foi cancelado nem terminou em falta). Inicia, conclui e marca
+  falta nos próprios atendimentos e faz encaixe; recebimento só com autorização do dono.
 
 A implantação atual usa o mesmo fuso `SALON_TIMEZONE` para todos os bancos do
 processo (padrão `America/Sao_Paulo`). Para fusos diferentes, use processos separados.
@@ -81,8 +82,9 @@ processo (padrão `America/Sao_Paulo`). Para fusos diferentes, use processos sep
 - Receita, no painel e no financeiro, é o que entrou: pagamentos no dia em que foram
   feitos, menos estornos no dia do estorno, sempre no fuso `SALON_TIMEZONE`.
 - Comissões usam a taxa registrada na reserva e o valor de serviços após desconto.
-  Produtos não geram comissão nesta versão. Pagamento de comissão gera despesa e
-  impede sobreposição de períodos já pagos.
+  Com estorno, vale só o que continuou recebido; sem pagamento algum, conta o valor do
+  serviço. Produtos não geram comissão nesta versão. Cada atendimento é acertado uma
+  vez: o concluído depois de um pagamento entra como complemento do período.
 - A taxa histórica anterior à migração não existia: a migração usa a taxa atual como
   referência para esses registros antigos. Mudanças passadas não são reconstruídas.
 
@@ -144,6 +146,7 @@ faixa 9 0000-xxxx, que não é atribuída.
 ```sh
 # No servidor (dentro do container do app)
 docker compose exec -T app node scripts/demo-data.cjs criar        # só com o salão vazio
+docker compose exec -T app node scripts/demo-data.cjs renovar      # completa a agenda, sem apagar nada
 docker compose exec -T app node scripts/demo-data.cjs limpar --sim # apaga tudo, menos acessos e configurações
 docker compose exec -T app node scripts/demo-data.cjs acessos --sim # troca todos os acessos pelos de demonstração
 ```
@@ -151,6 +154,9 @@ docker compose exec -T app node scripts/demo-data.cjs acessos --sim # troca todo
 `acessos --sim` apaga todos os acessos do salão e cria três de demonstração (dono,
 recepção e o profissional Diego Martins, em `@seubarbeiro.demo`) com senhas sorteadas,
 mostradas uma única vez no terminal. As sessões abertas deixam de valer.
+
+`renovar` é manual (ainda sem agendamento no servidor) e recusa
+qualquer salão com cliente ou acesso real ou com WhatsApp ligado.
 
 Rode `limpar --sim` antes de começar a usar o salão de verdade.
 
@@ -230,6 +236,9 @@ Para o contêiner local `salon-operations-test` na porta 55439, use
 `sh scripts/test-local.sh` dentro da API. A suíte aplica as migrações e usa dados de
 teste com identificadores únicos; chamadas de envio são simuladas, sem mensagens
 reais. Abrange concorrência, permissões, filas, dinheiro, inventário e agendamento.
+
+Os testes de tela (`npm run e2e` no painel) usam o mesmo tipo de banco descartável, via
+`PREVIEW_DATABASE_URL`, e rodam no CI em computador e celular.
 
 Após os testes, `node scripts/preview-demo.cjs` inicia uma API de demonstração usando
 somente o banco descartável `salon_test_b`. Inicie o Vite em paralelo e acesse

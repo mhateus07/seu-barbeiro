@@ -766,6 +766,7 @@ test('salon operations integration', async (t) => {
         whatsapp_api_key: 'test',
         whatsapp_instance: 'test',
         whatsapp_reminder_hours: '24',
+        whatsapp_quiet_hours: '',
       }))
         await db.settings.upsert({
           where: { key },
@@ -784,6 +785,7 @@ test('salon operations integration', async (t) => {
           startsAt: new Date(Date.now() + 5 * 3600000),
           endsAt: new Date(Date.now() + 6 * 3600000),
           totalPrice: 100,
+          createdAt: new Date(Date.now() - 4 * 3600000),
         },
       })
       await run(() => sendPendingReminders())

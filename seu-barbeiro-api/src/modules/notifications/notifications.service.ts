@@ -9,6 +9,11 @@ import { confirmUrl } from '../appointments/scheduling'
 import { expireDeposits } from '../payments/pix.service'
 import { runSubscriptionCycle } from '../subscriptions/subscriptions.service'
 import { assertOutboundUrl } from '../../utils/outbound-url'
+import { isQuietTime } from '../../utils/dates'
+import { markWorkerRun } from '../../lib/worker-status'
+
+/** Quem acabou de marcar já recebeu a confirmação: o lembrete fica para depois. */
+const REMINDER_AFTER_BOOKING_MS = 3 * 3600000
 
 export async function sendAndLog(params: {
   type: NotificationType
@@ -33,11 +38,14 @@ export async function sendPendingReminders() {
   const settings = await getSettings()
   if (settings.whatsapp_enabled !== 'true')
     return { sent: 0, failed: 0, queued: 0 }
+  if (isQuietTime(settings.whatsapp_quiet_hours))
+    return { sent: 0, failed: 0, queued: 0 }
   const hours = Number(settings.whatsapp_reminder_hours || 24)
   const appointments = await prisma.appointment.findMany({
     where: {
       status: { in: ['SCHEDULED', 'CONFIRMED'] },
       startsAt: { gt: new Date(), lte: new Date(Date.now() + hours * 3600000) },
+      createdAt: { lte: new Date(Date.now() - REMINDER_AFTER_BOOKING_MS) },
       // Horário com sinal pendente ainda não está garantido.
       OR: [{ depositAmount: null }, { depositPaidAt: { not: null } }],
     },
@@ -255,19 +263,30 @@ export function startNotificationWorker() {
     try {
       for (const salon of salons.values())
         await salonContext.run(salon, async () => {
-          try {
-            await expireDeposits()
-            await fillCancelledSlots()
-            await runSubscriptionCycle()
-            await sendPendingReminders()
-            await processNotificationQueue()
-            if (Date.now() - lastPurge > 3600000) await purgeOldRecords()
-          } catch {
-            console.error(`Falha no worker do salão ${salon.slug}`)
+          // Cada etapa roda sozinha: a falha em uma não impede lembretes e envios.
+          const steps: [string, () => Promise<unknown>][] = [
+            ['sinais', expireDeposits],
+            ['lista de espera', fillCancelledSlots],
+            ['assinaturas', runSubscriptionCycle],
+            ['lembretes', sendPendingReminders],
+            ['fila de mensagens', processNotificationQueue],
+          ]
+          if (Date.now() - lastPurge > 3600000)
+            steps.push(['retenção', () => purgeOldRecords()])
+          for (const [name, step] of steps) {
+            try {
+              await step()
+            } catch (error) {
+              console.error(
+                `Falha no worker do salão ${salon.slug} (${name}):`,
+                error instanceof Error ? error.message : 'erro desconhecido',
+              )
+            }
           }
         })
     } finally {
       if (Date.now() - lastPurge > 3600000) lastPurge = Date.now()
+      markWorkerRun()
       running = false
     }
   }
@@ -276,6 +295,30 @@ export function startNotificationWorker() {
   }, 60000)
   timer.unref()
   return timer
+}
+/** Situação do WhatsApp para o aviso no painel do dono. */
+export async function messagingAlert() {
+  const settings = await getSettings()
+  if (settings.whatsapp_enabled !== 'true')
+    return { enabled: false, failed: 0, configured: false }
+  const failed = await prisma.notificationLog.count({
+    where: {
+      status: 'FAILED',
+      attempts: { gte: 5 },
+      createdAt: { gte: new Date(Date.now() - 86400000) },
+      // Estas falhas são regras cumpridas, não problema de envio.
+      NOT: {
+        error: { in: ['Lembrete obsoleto: atendimento alterado ou encerrado', 'Oferta expirada', 'Autorização revogada'] },
+      },
+    },
+  })
+  return {
+    enabled: true,
+    failed,
+    configured: Boolean(
+      settings.whatsapp_api_url && settings.whatsapp_api_key && settings.whatsapp_instance,
+    ),
+  }
 }
 export async function listNotificationLogs(filters: {
   status?: NotificationStatus

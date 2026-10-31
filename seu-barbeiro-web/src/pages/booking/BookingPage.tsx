@@ -74,6 +74,7 @@ export function BookingPage() {
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [selectedTime, setSelectedTime] = useState<string>('')
   const [slots, setSlots] = useState<string[]>([])
+  const [slotsError, setSlotsError] = useState(false)
   const [loadingSlots, setLoadingSlots] = useState(false)
 
   const [clientName, setClientName] = useState('')
@@ -140,7 +141,9 @@ export function BookingPage() {
   }, 0)
 
   function toggleService(id: string) {
-    setSelectedBarber('')
+    // Link próprio do barbeiro: ele continua escolhido ao trocar os serviços.
+    const linked = new URLSearchParams(window.location.search).get('barbeiro') ?? ''
+    setSelectedBarber(barbers.some((b) => b.id === linked) ? linked : '')
     setSelectedTime('')
     setSelectedDate('')
     setSlots([])
@@ -160,6 +163,7 @@ export function BookingPage() {
     setSelectedDate(date)
     setSelectedTime('')
     setSlots([])
+    setSlotsError(false)
     if (!date || !selectedBarber) return
     setLoadingSlots(true)
     try {
@@ -171,7 +175,9 @@ export function BookingPage() {
       )
       setSlots(result)
     } catch {
+      // Falha de conexão não é agenda cheia: o cliente precisa poder tentar de novo.
       setSlots([])
+      setSlotsError(true)
     } finally {
       setLoadingSlots(false)
     }
@@ -640,6 +646,19 @@ export function BookingPage() {
                     {loadingSlots ? (
                       <div className="flex items-center justify-center py-8">
                         <Loader2 className="h-6 w-6 text-amber-500 animate-spin" />
+                      </div>
+                    ) : slotsError ? (
+                      <div role="alert" className="text-center py-8 bg-zinc-900 border border-zinc-800 rounded-2xl">
+                        <p className="text-zinc-300 font-medium">
+                          Não conseguimos carregar os horários
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => void handleDateChange(selectedDate)}
+                          className="mt-3 rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-zinc-950"
+                        >
+                          Tentar de novo
+                        </button>
                       </div>
                     ) : slots.length === 0 ? (
                       <div className="text-center py-8 bg-zinc-900 border border-zinc-800 rounded-2xl">

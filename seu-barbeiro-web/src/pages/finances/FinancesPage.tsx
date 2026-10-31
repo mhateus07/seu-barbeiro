@@ -139,10 +139,22 @@ const CashFlowTooltip = ({ active, payload, label }: { active?: boolean; payload
   return null
 }
 
+/** Falha ao buscar dados não pode parecer tela vazia. */
+function LoadFailed({ retry }: { retry: () => unknown }) {
+  return (
+    <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+      <p className="text-sm font-medium text-red-800">Não foi possível carregar estes dados.</p>
+      <Button className="mt-3" variant="secondary" onClick={() => void retry()}>
+        Tentar de novo
+      </Button>
+    </div>
+  )
+}
+
 // ─── TAB: RESUMO ─────────────────────────────────────────────────────────────
 
 function SummaryTab({ from, to }: { from: string; to: string }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['finances-summary', from, to],
     queryFn: () => getFinancialSummary(from, to),
   })
@@ -150,6 +162,7 @@ function SummaryTab({ from, to }: { from: string; to: string }) {
   if (isLoading) {
     return <div className="flex h-64 items-center justify-center"><Spinner size="lg" /></div>
   }
+  if (isError) return <LoadFailed retry={refetch} />
 
   const cashFlowData = (data?.cashFlowByDay ?? []).map((d) => ({
     name: parseDayKey(d.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
@@ -279,7 +292,7 @@ function PaymentsTab() {
     appointmentId: '',
   })
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['finances-payments', filterFrom, filterTo, filterMethod],
     queryFn: () => listPayments({ from: filterFrom, to: filterTo, method: filterMethod || undefined }),
   })
@@ -360,7 +373,9 @@ function PaymentsTab() {
       </div>
 
       {/* List */}
-      {isLoading ? (
+      {isError ? (
+        <LoadFailed retry={refetch} />
+      ) : isLoading ? (
         <div className="flex h-40 items-center justify-center"><Spinner size="lg" /></div>
       ) : (data?.data?.length ?? 0) === 0 ? (
         <div className="rounded-2xl border border-zinc-200 bg-white py-16 text-center text-sm text-zinc-400">
@@ -511,7 +526,7 @@ function ExpensesTab() {
     notes: '',
   })
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['finances-expenses', filterStatus, filterCategory],
     queryFn: () => listExpenses({ status: filterStatus || undefined, category: filterCategory || undefined }),
   })
@@ -610,7 +625,9 @@ function ExpensesTab() {
       </div>
 
       {/* List */}
-      {isLoading ? (
+      {isError ? (
+        <LoadFailed retry={refetch} />
+      ) : isLoading ? (
         <div className="flex h-40 items-center justify-center"><Spinner size="lg" /></div>
       ) : (data?.data?.length ?? 0) === 0 ? (
         <div className="rounded-2xl border border-zinc-200 bg-white py-16 text-center text-sm text-zinc-400">
@@ -773,7 +790,7 @@ function CommissionsTab({ from, to }: { from: string; to: string }) {
     queryFn: listOpenAdvances,
   })
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['finances-commissions', from, to],
     queryFn: () => getCommissions(from, to),
   })
@@ -800,6 +817,7 @@ function CommissionsTab({ from, to }: { from: string; to: string }) {
   const totalPaid = (paymentsHistory ?? []).reduce((sum: number, p: CommissionPayment) => sum + Number(p.commissionAmount), 0)
 
   if (isLoading) return <div className="flex h-40 items-center justify-center"><Spinner size="lg" /></div>
+  if (isError) return <LoadFailed retry={refetch} />
 
   function openPayModal(b: typeof selectedBarber) {
     setSelectedBarber(b)
@@ -852,7 +870,10 @@ function CommissionsTab({ from, to }: { from: string; to: string }) {
                       <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-amber-600 font-bold text-xs">
                         {b.barberName.charAt(0)}
                       </div>
-                      <span className="font-medium text-zinc-800">{b.barberName}</span>
+                      <span className="font-medium text-zinc-800">
+                        {b.barberName}
+                        {b.isActive === false && <span className="ml-1 text-xs font-normal text-zinc-500">(inativo)</span>}
+                      </span>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center text-zinc-600">{b.appointmentsCount}</td>
@@ -880,9 +901,9 @@ function CommissionsTab({ from, to }: { from: string; to: string }) {
                     >
                       Vale
                     </button>
-                    {isOwner && b.commission > 0 && (
+                    {isOwner && b.pendingCommission > 0 && (
                       <button
-                        onClick={() => openPayModal(b)}
+                        onClick={() => openPayModal({ ...b, commission: b.pendingCommission })}
                         className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 text-xs font-medium text-emerald-700 transition-colors"
                       >
                         <CheckCircle2 className="h-3 w-3" />
