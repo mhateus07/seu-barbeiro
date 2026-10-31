@@ -3,6 +3,26 @@
 Diário curto das sessões. O histórico detalhado das versões fica no `CHANGELOG.md`, as
 pendências nas issues do GitHub e as notas de estudo no cofre do Obsidian.
 
+## 31/10/2026 — Correções para o piloto
+
+**Na prática:** os problemas encontrados na análise foram corrigidos. O Pix pago depois
+do cancelamento agora é registrado, o cliente é avisado quando o horário muda, o barbeiro
+opera a própria agenda, a comissão fecha certo em estorno, inativo e atendimento tardio,
+e produtos, desconto e caixa ganharam controle. A demonstração ganhou um comando que completa
+a agenda sem apagar nada, ainda não ligado no servidor. Testes com navegador percorrem o site, o agendamento e o caixa, no computador
+e no celular.
+
+**Técnico:** regra padrão da comissão: nasce do atendimento concluído; com estorno vale o
+que ficou recebido; sem pagamento vale o preço do serviço. Migração
+`20261031000000_commission_settlement_stock` (`commissionPaymentId`, `minStock`). Novos:
+`worker-status`, `person-name`, `/operations/alerts`, `/health` com banco e último ciclo do
+worker, Dependabot, auditoria e job `e2e` no CI, `renovar` e travas no `demo-data.cjs`.
+58 testes de API e 10 de tela aprovados.
+
+**Próximo passo:** decisões do Mateus: preço (#73), regra do sinal (#14) e confirmação da
+regra da comissão, e autorização para rodar e agendar o `renovar` no servidor antes de
+05/11 (#72). Depois: demo em banco próprio, monitor externo (#32) e piloto.
+
 ## 31/10/2026 — Análise de escopo e novo plano
 
 **Na prática:** o sistema foi reavaliado com foco no piloto. Quinze problemas foram

@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /$
+Allow: /privacidade
+Disallow: /api/
+Disallow: /login
+Disallow: /operacao
+Disallow: /agendar
+Disallow: /meu-horario/
+Disallow: /pagar/
+Disallow: /oferta
+Sitemap: https://seubarbeiro.impulsiodigital.com/sitemap.xml

@@ -1,0 +1,17 @@
+# Atualizações semanais; as de segurança chegam assim que publicadas.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /seu-barbeiro-api
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: /seu-barbeiro-web
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

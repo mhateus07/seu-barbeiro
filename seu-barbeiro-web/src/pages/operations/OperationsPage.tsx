@@ -373,7 +373,13 @@ export function OperationsPage() {
     },
   })
   const { data: products = [] } = useQuery<
-    (Option & { price: number; cost: number; stock: number })[]
+    (Option & {
+      price: number
+      cost: number
+      stock: number
+      minStock: number
+      isActive: boolean
+    })[]
   >({
     queryKey: ['operations-products'],
     enabled: isStaff,
@@ -385,6 +391,19 @@ export function OperationsPage() {
     queryKey: ['operations-users'],
     enabled: isOwner && tab === 'team',
     queryFn: async () => (await api.get('/operations/users')).data,
+  })
+  const { data: identity } = useQuery<{ professionalCanReceive: boolean }>({
+    queryKey: ['operations-identity'],
+    enabled: !isStaff,
+    queryFn: async () => (await api.get('/operations/identity')).data,
+  })
+  const { data: alerts } = useQuery<{
+    messaging: { enabled: boolean; configured: boolean; failed: number }
+  }>({
+    queryKey: ['operations-alerts'],
+    enabled: isStaff,
+    refetchInterval: 5 * 60000,
+    queryFn: async () => (await api.get('/operations/alerts')).data,
   })
   const { data: myCommission } = useQuery<{
     commission: number
@@ -644,7 +663,38 @@ export function OperationsPage() {
             <Plus size={16} strokeWidth={2.5} /> Novo atendimento
           </button>
         )}
+        {!isStaff && (
+          <button
+            onClick={() =>
+              setForm({
+                title: 'Encaixe agora',
+                fields: [
+                  { key: 'clientName', label: 'Nome do cliente' },
+                  { key: 'clientPhone', label: 'Telefone com DDD' },
+                  { key: 'serviceId', label: 'Serviço', options: agenda?.services },
+                ],
+                submit: (v) =>
+                  api.post('/operations/walk-ins', {
+                    clientName: v.clientName,
+                    clientPhone: v.clientPhone,
+                    serviceIds: [v.serviceId],
+                  }),
+              })
+            }
+            className="flex w-full items-center justify-center gap-2 rounded-xl sm:w-auto bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-amber-400 active:scale-[0.98]"
+          >
+            <Plus size={16} strokeWidth={2.5} /> Encaixe
+          </button>
+        )}
       </header>
+      {alerts?.messaging.enabled &&
+        (!alerts.messaging.configured || alerts.messaging.failed > 0) && (
+          <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">
+            {!alerts.messaging.configured
+              ? 'O WhatsApp está ligado, mas falta configurar a conexão. Os clientes não estão recebendo mensagens.'
+              : `${alerts.messaging.failed} mensagens de WhatsApp não foram entregues nas últimas 24 horas. Confira a conexão em Configurações.`}
+          </p>
+        )}
       <nav
         className="no-scrollbar flex w-fit max-w-full gap-1 overflow-x-auto rounded-2xl border border-zinc-200 bg-white p-1 shadow-soft"
         aria-label="Áreas de operação"
@@ -1452,6 +1502,12 @@ export function OperationsPage() {
                         label: 'Estoque inicial',
                         type: 'number',
                       },
+                      {
+                        key: 'minStock',
+                        label: 'Avisar quando restarem',
+                        type: 'number',
+                        value: 0,
+                      },
                     ],
                     submit: (v) =>
                       api.post('/operations/products', {
@@ -1459,6 +1515,7 @@ export function OperationsPage() {
                         price: Number(v.price),
                         cost: Number(v.cost),
                         stock: Number(v.stock),
+                        minStock: Number(v.minStock),
                       }),
                   })
                 }
@@ -1468,16 +1525,84 @@ export function OperationsPage() {
             )}
           </div>
           {products.map((p) => (
-            <div key={p.id} className="border-t py-3 flex justify-between">
-              <span>{p.name}</span>
-              <span>
-                {money(p.price)} · {p.stock} unidades
+            <div
+              key={p.id}
+              className="border-t py-3 flex flex-wrap items-center justify-between gap-2"
+            >
+              <span className={p.isActive ? '' : 'text-zinc-400 line-through'}>{p.name}</span>
+              <span className="flex flex-wrap items-center gap-2">
+                {p.minStock > 0 && p.stock <= p.minStock && (
+                  <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">
+                    Repor
+                  </span>
+                )}
+                <span>
+                  {money(p.price)} · {p.stock} unidades
+                </span>
+                <button
+                  className={buttonClass}
+                  onClick={() =>
+                    setForm({
+                      title: `Estoque de ${p.name}`,
+                      fields: [
+                        {
+                          key: 'quantity',
+                          label: 'Quantidade (use negativo para retirar)',
+                          type: 'number',
+                        },
+                        { key: 'reason', label: 'Motivo', value: 'Reposição' },
+                      ],
+                      submit: (v) =>
+                        api.post(`/operations/products/${p.id}/stock`, {
+                          quantity: Number(v.quantity),
+                          reason: v.reason,
+                        }),
+                    })
+                  }
+                >
+                  Estoque
+                </button>
+                {isOwner && (
+                  <button
+                    className={buttonClass}
+                    onClick={() =>
+                      setForm({
+                        title: `Editar ${p.name}`,
+                        fields: [
+                          { key: 'name', label: 'Nome', value: p.name },
+                          { key: 'price', label: 'Preço de venda', type: 'number', value: Number(p.price) },
+                          { key: 'cost', label: 'Custo unitário', type: 'number', value: Number(p.cost) },
+                          { key: 'minStock', label: 'Avisar quando restarem', type: 'number', value: p.minStock },
+                          {
+                            key: 'isActive',
+                            label: 'Situação',
+                            value: p.isActive ? 'true' : 'false',
+                            options: [
+                              { id: 'true', name: 'À venda' },
+                              { id: 'false', name: 'Fora de venda' },
+                            ],
+                          },
+                        ],
+                        submit: (v) =>
+                          api.patch(`/operations/products/${p.id}`, {
+                            name: v.name,
+                            price: Number(v.price),
+                            cost: Number(v.cost),
+                            minStock: Number(v.minStock),
+                            isActive: v.isActive === 'true',
+                          }),
+                      })
+                    }
+                  >
+                    Editar
+                  </button>
+                )}
               </span>
             </div>
           ))}
           {!products.length && (
             <p className="text-sm text-zinc-500">
-              Cadastre os produtos vendidos no salão. A venda na comanda baixa o
+              Cadastre os produtos vendidos na barbearia. A venda na comanda baixa o
               estoque automaticamente.
             </p>
           )}
@@ -1519,7 +1644,7 @@ export function OperationsPage() {
             </button>
           </div>
           <div className="flex flex-wrap gap-2">
-            {isStaff && (
+            {(
               <>
                 {(
                   {
@@ -1539,7 +1664,7 @@ export function OperationsPage() {
                         } as Record<string, string>
                       )[selectedFresh.status]
                       confirm(`Alterar para ${statusLabels[next]}?`, () =>
-                        api.patch(`/appointments/${selectedFresh.id}/status`, {
+                        api.patch(`/operations/appointments/${selectedFresh.id}/status`, {
                           status: next,
                         }),
                       )
@@ -1556,7 +1681,53 @@ export function OperationsPage() {
                     }
                   </button>
                 )}
-                {['SCHEDULED', 'CONFIRMED'].includes(selectedFresh.status) && (
+                {!isStaff && ['SCHEDULED', 'CONFIRMED'].includes(selectedFresh.status) && (
+                  <button
+                    className={buttonClass}
+                    onClick={() =>
+                      confirm('Registrar ausência?', () =>
+                        api.patch(`/operations/appointments/${selectedFresh.id}/status`, {
+                          status: 'NO_SHOW',
+                        }),
+                      )
+                    }
+                  >
+                    Faltou
+                  </button>
+                )}
+                {!isStaff &&
+                  identity?.professionalCanReceive &&
+                  ['CONFIRMED', 'IN_PROGRESS', 'COMPLETED'].includes(selectedFresh.status) && (
+                    <button
+                      className={buttonClass}
+                      onClick={() =>
+                        setForm({
+                          title: 'Receber do cliente',
+                          fields: [
+                            { key: 'amount', label: 'Valor', type: 'number' },
+                            {
+                              key: 'method',
+                              label: 'Forma',
+                              options: [
+                                { id: 'PIX', name: 'Pix' },
+                                { id: 'CASH', name: 'Dinheiro' },
+                                { id: 'CREDIT_CARD', name: 'Crédito' },
+                                { id: 'DEBIT_CARD', name: 'Débito' },
+                              ],
+                            },
+                          ],
+                          submit: (v) =>
+                            api.post(`/operations/appointments/${selectedFresh.id}/payments`, {
+                              amount: Number(v.amount),
+                              method: v.method,
+                            }),
+                        })
+                      }
+                    >
+                      Receber
+                    </button>
+                  )}
+                {isStaff && ['SCHEDULED', 'CONFIRMED'].includes(selectedFresh.status) && (
                   <>
                     <button
                       className={buttonClass}
@@ -1617,7 +1788,7 @@ export function OperationsPage() {
                     </button>
                   </>
                 )}
-                {selectedFresh.status === 'COMPLETED' && (
+                {isStaff && selectedFresh.status === 'COMPLETED' && (
                   <button
                     className="rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white"
                     onClick={() => book(selectedFresh)}
@@ -1751,11 +1922,18 @@ export function OperationsPage() {
                         },
                       ],
                       submit: (v) =>
-                        api.post('/finances/payments', {
-                          appointmentId: selectedFresh.id,
-                          amount: Number(v.amount),
-                          method: v.method,
-                        }),
+                        api
+                          .post('/finances/payments', {
+                            appointmentId: selectedFresh.id,
+                            amount: Number(v.amount),
+                            method: v.method,
+                          })
+                          .then((r) => {
+                            if (r.data?.data?.outsideCash)
+                              toast.warning(
+                                'Recebido, mas o caixa está fechado. Este dinheiro não entra em nenhum fechamento.',
+                              )
+                          }),
                     })
                   }
                 >

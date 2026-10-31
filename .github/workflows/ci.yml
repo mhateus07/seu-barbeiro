@@ -39,6 +39,8 @@ jobs:
           cache: npm
           cache-dependency-path: seu-barbeiro-api/package-lock.json
       - run: npm ci
+      - name: Alertas de segurança nas dependências
+        run: npm audit --omit=dev --audit-level=high
       - run: npx prisma generate
       - name: Segundo banco de teste
         run: PGPASSWORD=salon_test_only psql -h 127.0.0.1 -U postgres -c 'CREATE DATABASE salon_test_b'
@@ -63,5 +65,50 @@ jobs:
           cache: npm
           cache-dependency-path: seu-barbeiro-web/package-lock.json
       - run: npm ci
+      - name: Alertas de segurança nas dependências
+        run: npm audit --omit=dev --audit-level=high
       - run: npm run lint
       - run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: salon_test_only
+          POSTGRES_DB: salon_test_e2e
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PREVIEW_DATABASE_URL: postgresql://postgres:salon_test_only@127.0.0.1:5432/salon_test_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: API
+        working-directory: seu-barbeiro-api
+        run: |
+          npm ci
+          npx prisma generate
+          DATABASE_URL=$PREVIEW_DATABASE_URL npx prisma migrate deploy
+          npm run build
+      - name: Painel
+        working-directory: seu-barbeiro-web
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Testes de tela
+        working-directory: seu-barbeiro-web
+        run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: seu-barbeiro-web/test-results

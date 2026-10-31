@@ -1,7 +1,7 @@
 {
   "name": "Seu Barbeiro",
   "short_name": "Seu Barbeiro",
-  "description": "Agenda, clientes, Pix e caixa do seu salão ou barbearia.",
+  "description": "Agenda, clientes, Pix e caixa da sua barbearia.",
   "lang": "pt-BR",
   "start_url": "/operacao",
   "scope": "/",

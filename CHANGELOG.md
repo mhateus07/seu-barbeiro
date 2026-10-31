@@ -1,5 +1,51 @@
 # Changelog — Seu Barbeiro
 
+## [31/10/2026] — Correções para o piloto
+
+### Dinheiro
+- Cancelar pelo link agora cancela o Pix também no Mercado Pago. Se o cliente pagar antes
+  de o cancelamento chegar, o valor é registrado e a equipe é avisada
+- Comissão: recebimento estornado deixa de gerar comissão; atendimento sem pagamento segue
+  contando pelo valor do serviço; quem foi desativado continua na lista enquanto tiver
+  atendimento no período; atendimento concluído depois do pagamento entra como complemento
+- Estornar a mensalidade reabre a cobrança e desfaz o período pago; estornar o sinal tira a
+  garantia do horário
+- Recepção com limite de desconto configurável; todo desconto fica no registro de segurança
+- Dinheiro recebido com o caixa fechado traz um aviso no painel
+
+### Cliente
+- O cliente recebe mensagem quando o salão remarca ou cancela e quando o sinal vence
+- Quem acabou de marcar não recebe o lembrete junto com a confirmação; lembretes e ofertas
+  automáticas respeitam uma pausa noturna configurável (padrão 21:00-08:00)
+- E-mail já cadastrado não impede mais o agendamento
+- Agendamento online com antecedência mínima (padrão 30 minutos) e limite de dias à frente
+  (padrão 60), configuráveis; falha de rede nos horários oferece nova tentativa
+- O nome digitado nas páginas públicas aceita só caracteres de nome de pessoa
+- Link próprio de cada barbeiro (Equipe → Copiar link)
+
+### Barbeiro e estoque
+- Profissional inicia, conclui e marca falta nos próprios atendimentos e faz encaixe.
+  Lançar recebimento depende de autorização do dono em Configurações
+- Produtos: editar, tirar de venda, repor estoque com motivo registrado e aviso de estoque
+  baixo. Atendimento cancelado ou com falta devolve os produtos, se não houver recebimento
+
+### Operação
+- `/health` consulta os bancos e responde 503 se algum falhar
+- Cada rotina automática roda isolada e registra o motivo da falha
+- Painel avisa quando o WhatsApp está sem conexão configurada ou mensagens falharam
+- Demonstração: `demo-data.cjs renovar` completa a agenda sem apagar nada e recusa salão
+  com dados reais. A execução no servidor ainda não está agendada
+- Falhas no financeiro mostram o erro e um botão de tentar de novo
+
+### Site
+- Textos só para barbearias, prévia do link (Open Graph), `robots.txt` e `sitemap.xml` reais
+
+### Técnico
+- Migração `20261031000000_commission_settlement_stock`: `appointments.commissionPaymentId`
+  (com preenchimento dos pagamentos já feitos) e `products.minStock`
+- Testes: `tests/piloto.test.cjs` (18 novos) e testes de tela com Playwright (`npm run e2e`)
+- `npm audit --omit=dev` zerado na API e no painel, conferido no CI; Dependabot ligado
+
 ## [22/10/2026] — Pronto para o vídeo de demonstração
 
 ### Correções de fluxo
