@@ -7,6 +7,7 @@ import { runSchedule, bookInTransaction } from '../appointments/scheduling'
 import * as PublicController from './public.controller'
 import * as PublicService from './public.service'
 import { publicCharge } from '../payments/pix.service'
+import { personName } from '../../utils/person-name'
 
 const router = Router()
 
@@ -102,7 +103,7 @@ router.post('/waitlist', async (req, res) => {
   try {
     const data = z
       .object({
-        name: z.string().trim().min(2).max(120),
+        name: personName,
         phone: z.string().max(30),
         date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         barberId: z.union([z.string().uuid(), z.literal('any')]),

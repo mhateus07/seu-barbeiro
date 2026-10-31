@@ -2,10 +2,14 @@ import {
   runSchedule,
   bookInTransaction,
   assertAvailability,
+  manageUrl,
+  queueClientMessage,
+  releaseOrderItems,
 } from './scheduling'
 import { AppointmentStatus } from '@prisma/client'
 import { prisma } from '../../lib/prisma'
-import { parseDay } from '../../utils/dates'
+import { formatWhen, parseDay } from '../../utils/dates'
+import { getSettings } from '../settings/settings.service'
 import {
   CreateAppointmentInput,
   UpdateAppointmentInput,
@@ -131,7 +135,7 @@ export async function updateAppointment(
     await tx.appointmentSegment.deleteMany({ where: { appointmentId: id } })
     if (servicesChanged)
       await tx.appointmentService.deleteMany({ where: { appointmentId: id } })
-    return tx.appointment.update({
+    const updated = await tx.appointment.update({
       where: { id },
       data: {
         clientId: input.clientId,
@@ -162,6 +166,22 @@ export async function updateAppointment(
       },
       include: appointmentInclude,
     })
+    // O cliente precisa saber quando o salão muda o horário ou o profissional.
+    if (
+      updated.startsAt.getTime() !== existing.startsAt.getTime() ||
+      updated.barberId !== existing.barberId
+    ) {
+      const settings = await getSettings(tx)
+      await queueClientMessage(tx, {
+        appointmentId: updated.id,
+        clientId: updated.clientId,
+        phone: updated.client.phone,
+        type: 'CUSTOM',
+        dedupeKey: `moved:${updated.id}:${updated.startsAt.toISOString()}:${updated.barberId}:${updated.updatedAt.getTime()}`,
+        message: `Olá, ${updated.client.name}! Seu horário foi alterado para ${formatWhen(updated.startsAt)}, com ${updated.barber.name}. ${settings.shop_name}.${manageUrl(existing.manageToken)}`,
+      })
+    }
+    return updated
   })
 }
 
@@ -170,7 +190,10 @@ export async function updateAppointmentStatus(
   input: UpdateStatusInput,
 ) {
   return runSchedule(async (tx) => {
-    const appointment = await tx.appointment.findUnique({ where: { id } })
+    const appointment = await tx.appointment.findUnique({
+      where: { id },
+      include: { client: true, barber: true },
+    })
     if (!appointment) throw new Error('Agendamento não encontrado')
     if (appointment.status === input.status)
       return tx.appointment.findUnique({
@@ -215,6 +238,19 @@ export async function updateAppointmentStatus(
         })
       }
       credited = true
+    }
+    if (input.status === 'CANCELLED' || input.status === 'NO_SHOW')
+      await releaseOrderItems(tx, id)
+    if (input.status === 'CANCELLED' && appointment.startsAt > new Date()) {
+      const settings = await getSettings(tx)
+      await queueClientMessage(tx, {
+        appointmentId: id,
+        clientId: appointment.clientId,
+        phone: appointment.client.phone,
+        type: 'APPOINTMENT_CANCELLATION',
+        dedupeKey: `cancelled:${id}`,
+        message: `Olá, ${appointment.client.name}! Seu atendimento de ${formatWhen(appointment.startsAt)}, com ${appointment.barber.name}, foi cancelado pelo salão.${appointment.depositPaidAt ? ' Fale com a gente sobre o sinal que você pagou.' : ''} ${settings.shop_name}${settings.shop_phone ? `: ${settings.shop_phone}` : ''}.`,
+      })
     }
     return tx.appointment.update({
       where: { id },

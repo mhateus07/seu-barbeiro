@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { prisma, currentSalon } from '../../lib/prisma'
 import { assertAvailability, runSchedule, Tx } from '../appointments/scheduling'
 import { getSettings } from '../settings/settings.service'
-import { formatWhen } from '../../utils/dates'
+import { formatWhen, isQuietTime } from '../../utils/dates'
 
 export async function offerWaitlist(
   tx: Tx,
@@ -70,7 +70,8 @@ export async function fillCancelledSlots() {
   if (
     settings.waitlist_auto_offer !== 'true' ||
     settings.whatsapp_enabled !== 'true' ||
-    !process.env.PUBLIC_WEB_URL
+    !process.env.PUBLIC_WEB_URL ||
+    isQuietTime(settings.whatsapp_quiet_hours)
   )
     return
   const cancelled = await prisma.appointment.findMany({

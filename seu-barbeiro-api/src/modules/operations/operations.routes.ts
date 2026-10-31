@@ -13,6 +13,11 @@ import {
 } from '../appointments/scheduling'
 import { getSettings } from '../settings/settings.service'
 import { pushPublicKey } from '../push/push.service'
+import { updateAppointmentStatus } from '../appointments/appointments.service'
+import { commissionBase, createPayment } from '../finances/finances.service'
+import { messagingAlert } from '../notifications/notifications.service'
+import { normalizePhone } from '../../utils/phone'
+import { personName } from '../../utils/person-name'
 
 const router = Router()
 const uuid = z.string().uuid()
@@ -28,7 +33,89 @@ router.get('/identity', async (_req, res) => {
     logo: s.shop_logo || '',
     phone: s.shop_phone,
     address: s.shop_address,
+    professionalCanReceive: s.professional_can_receive === 'true',
   })
+})
+// Aviso no painel quando o WhatsApp para de entregar.
+router.get('/alerts', staff, async (_req, res) => {
+  res.json({ messaging: await messagingAlert() })
+})
+/** Profissional só mexe no que é dele; dono e recepção, em todos. */
+async function ownAppointment(req: AuthRequest, id: string) {
+  const a = await prisma.appointment.findUnique({ where: { id } })
+  if (!a) throw new Error('Atendimento não encontrado')
+  if (req.role === 'PROFESSIONAL' && a.barberId !== req.barberId) return null
+  return a
+}
+// Barbearia sem recepção: o barbeiro conduz o próprio atendimento.
+router.patch('/appointments/:id/status', async (req: AuthRequest, res) => {
+  const { status } = z
+    .object({
+      status: z.enum(['CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'NO_SHOW', 'CANCELLED']),
+    })
+    .parse(req.body)
+  const a = await ownAppointment(req, String(req.params.id))
+  if (!a) return res.sendStatus(403)
+  if (req.role === 'PROFESSIONAL' && status === 'CANCELLED')
+    throw new Error('Cancelamento é feito pelo dono ou pela recepção')
+  res.json(await updateAppointmentStatus(a.id, { status }))
+})
+router.post('/appointments/:id/payments', async (req: AuthRequest, res) => {
+  const data = z
+    .object({
+      amount: z.number().positive().multipleOf(0.01),
+      method: z.enum(['CASH', 'PIX', 'CREDIT_CARD', 'DEBIT_CARD']),
+    })
+    .parse(req.body)
+  const a = await ownAppointment(req, String(req.params.id))
+  if (!a) return res.sendStatus(403)
+  if (
+    req.role === 'PROFESSIONAL' &&
+    (await getSettings()).professional_can_receive !== 'true'
+  )
+    return res.sendStatus(403)
+  const payment = await createPayment({ ...data, appointmentId: a.id })
+  await audit({
+    adminId: req.adminId,
+    action: 'payment.create',
+    entity: 'payment',
+    entityId: payment.id,
+    details: { amount: data.amount, method: data.method },
+  })
+  res.status(201).json(payment)
+})
+// Encaixe: cliente que chegou sem hora marcada.
+router.post('/walk-ins', async (req: AuthRequest, res) => {
+  const data = z
+    .object({
+      clientName: personName,
+      clientPhone: z.string().min(10).max(25),
+      serviceIds: z.array(uuid).min(1).max(10),
+      barberId: uuid.optional(),
+    })
+    .parse(req.body)
+  const barberId = req.role === 'PROFESSIONAL' ? req.barberId : data.barberId
+  if (!barberId) throw new Error('Escolha o profissional')
+  const phone = normalizePhone(data.clientPhone)
+  const appointment = await runSchedule(async (tx) => {
+    const matches = await tx.$queryRaw<
+      { id: string }[]
+    >`SELECT id FROM clients WHERE regexp_replace(phone, '[^0-9]', '', 'g') IN (${phone}, ${phone.slice(2)})`
+    if (matches.length > 1)
+      throw new Error('Há mais de um cadastro com este telefone. Peça ajuda ao salão.')
+    const clientId =
+      matches[0]?.id ??
+      (await tx.client.create({ data: { name: data.clientName, phone } })).id
+    return bookInTransaction(tx, {
+      clientId,
+      barberId,
+      serviceIds: data.serviceIds,
+      startsAt: new Date(Date.now() + 60000).toISOString(),
+      source: 'WALK_IN',
+      silent: true,
+    })
+  })
+  res.status(201).json(appointment)
 })
 // Registro de ações sensíveis, para o dono conferir quem fez o quê.
 router.get('/audit', owner, async (req, res) => {
@@ -404,9 +491,49 @@ router.post('/products', owner, async (req, res) => {
       price: z.number().nonnegative(),
       cost: z.number().nonnegative(),
       stock: z.number().int().nonnegative(),
+      minStock: z.number().int().nonnegative().default(0),
     })
     .parse(req.body)
   res.status(201).json(await prisma.product.create({ data }))
+})
+router.patch('/products/:id', owner, async (req, res) => {
+  const data = z
+    .object({
+      name: z.string().min(2).optional(),
+      price: z.number().nonnegative().optional(),
+      cost: z.number().nonnegative().optional(),
+      minStock: z.number().int().nonnegative().optional(),
+      isActive: z.boolean().optional(),
+    })
+    .parse(req.body)
+  res.json(await prisma.product.update({ where: { id: req.params.id }, data }))
+})
+// Reposição ou acerto de contagem: valor positivo entra, negativo sai.
+router.post('/products/:id/stock', staff, async (req: AuthRequest, res) => {
+  const data = z
+    .object({
+      quantity: z.number().int().min(-100000).max(100000).refine((v) => v !== 0, 'Informe a quantidade'),
+      reason: z.string().trim().min(3).max(200),
+    })
+    .parse(req.body)
+  const product = await runSchedule(async (tx) => {
+    const current = await tx.product.findUnique({ where: { id: req.params.id } })
+    if (!current) throw new Error('Produto não encontrado')
+    if (current.stock + data.quantity < 0)
+      throw new Error('O estoque não pode ficar negativo')
+    return tx.product.update({
+      where: { id: current.id },
+      data: { stock: { increment: data.quantity } },
+    })
+  })
+  await audit({
+    adminId: req.adminId,
+    action: 'product.stock',
+    entity: 'product',
+    entityId: product.id,
+    details: { quantity: data.quantity, reason: data.reason, stock: product.stock },
+  })
+  res.json(product)
 })
 router.post('/orders/:id/items', staff, async (req, res) => {
   const data = z
@@ -465,12 +592,11 @@ router.delete('/orders/:id/items/:itemId', staff, async (req, res) => {
     }),
   )
 })
-router.patch('/orders/:id/discount', staff, async (req, res) => {
+router.patch('/orders/:id/discount', staff, async (req: AuthRequest, res) => {
   const { discount } = z
     .object({ discount: z.number().nonnegative() })
     .parse(req.body)
-  res.json(
-    await runSchedule(async (tx) => {
+  const updated = await runSchedule(async (tx) => {
       const a = await tx.appointment.findUnique({
         where: { id: req.params.id },
         include: { payments: true },
@@ -482,9 +608,21 @@ router.patch('/orders/:id/discount', staff, async (req, res) => {
         a.payments.some((p) => !p.refundedAt)
       )
         throw new Error('Desconto inválido ou comanda com recebimentos')
+      if (req.role === 'RECEPTION') {
+        const limit = Number((await getSettings(tx)).reception_max_discount_percent)
+        if (discount > (Number(a.totalPrice) * limit) / 100)
+          throw new Error(`Desconto acima do limite de ${limit}% da recepção`)
+      }
       return tx.appointment.update({ where: { id: a.id }, data: { discount } })
-    }),
-  )
+  })
+  await audit({
+    adminId: req.adminId,
+    action: 'order.discount',
+    entity: 'appointment',
+    entityId: updated.id,
+    details: { discount },
+  })
+  res.json(updated)
 })
 
 router.get(
@@ -499,14 +637,13 @@ router.get(
           gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
         },
       },
+      include: { payments: { select: { amount: true, refundedAt: true } } },
     })
     res.json({
       commission: appointments.reduce(
         (sum, a) =>
           sum +
-          ((Number(a.totalPrice) - Number(a.discount)) *
-            Number(a.commissionRateSnapshot ?? 0)) /
-            100,
+          (commissionBase(a) * Number(a.commissionRateSnapshot ?? 0)) / 100,
         0,
       ),
       appointments: appointments.length,

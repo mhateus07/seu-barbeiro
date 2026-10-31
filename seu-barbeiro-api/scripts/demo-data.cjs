@@ -446,6 +446,7 @@ async function criar() {
     const cp = await db.commissionPayment.create({
       data: { barberId: b.id, periodFrom: prevFrom, periodTo: prevTo, totalRevenue: revenue, commissionAmount: commission, commissionRate: b.rate, advancesDeducted: advance, paidAt, notes: 'Pago por Pix' },
     })
+    await db.appointment.updateMany({ where: { id: { in: done.map((a) => a.id) } }, data: { commissionPaymentId: cp.id } })
     if (advance) {
       const given = new Date(now.getFullYear(), now.getMonth() - 1, 15, 19)
       const adv = await db.barberAdvance.create({ data: { barberId: b.id, amount: advance, notes: 'Adiantamento da quinzena', givenAt: given, settledInId: cp.id } })

@@ -8,14 +8,38 @@ import { normalizePhone } from '../../utils/phone'
 import { prisma } from '../../lib/prisma'
 import { getSettings } from '../settings/settings.service'
 import { formatWhen } from '../../utils/dates'
-import { manageUrl } from '../appointments/scheduling'
+import { manageUrl, releaseOrderItems } from '../appointments/scheduling'
+import { cancelPayment } from '../../lib/mercadopago'
 import {
   depositFor,
   depositMinutes,
   issuePix,
+  mercadoPagoToken,
   newToken,
 } from '../payments/pix.service'
 import { notifyStaff } from '../push/push.service'
+
+/** Janela do agendamento online, definida pelo salão. */
+export function bookingWindow(settings: Record<string, string>, now = new Date()) {
+  const minutes = Number(settings.booking_min_minutes)
+  const days = Number(settings.booking_max_days)
+  return {
+    earliest: new Date(
+      now.getTime() + (Number.isFinite(minutes) && minutes >= 0 ? minutes : 30) * 60000,
+    ),
+    latest: new Date(
+      now.getTime() + (Number.isFinite(days) && days >= 1 ? days : 60) * 86400000,
+    ),
+  }
+}
+
+function assertBookingWindow(settings: Record<string, string>, startsAt: Date) {
+  const { earliest, latest } = bookingWindow(settings)
+  if (startsAt < earliest)
+    throw new Error('Este horário está muito próximo. Escolha outro ou fale com o salão.')
+  if (startsAt > latest)
+    throw new Error('A agenda online ainda não abriu para esta data. Escolha uma data mais próxima.')
+}
 
 export async function getPublicInfo() {
   const settings = await getSettings()
@@ -96,6 +120,7 @@ export async function getAvailableSlots(
   ]
   const hours = parseHours(settings[`hours_${names[day.getDay()]}`])
   if (!hours) return []
+  const { earliest, latest } = bookingWindow(settings)
   const barbers = await prisma.barber.findMany({
     where: { isActive: true, ...(barberId === 'any' ? {} : { id: barberId }) },
   })
@@ -107,7 +132,7 @@ export async function getAvailableSlots(
   ) {
     const time = `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`
     const start = new Date(`${date}T${time}:00`)
-    if (start <= new Date()) continue
+    if (start < earliest || start > latest) continue
     for (const barber of barbers) {
       if (!serviceIds?.length)
         throw new Error('Informe os serviços para consultar disponibilidade')
@@ -237,16 +262,23 @@ async function bookPublicAppointment(data: {
       throw new Error(
         'Este telefone já tem horários marcados. Para marcar outro, fale com o salão.',
       )
-    if (!client)
+    if (!client) {
+      // Família com o mesmo e-mail ou cliente que trocou de número: o telefone
+      // identifica o cliente e o e-mail repetido não pode impedir o agendamento.
+      const email = data.clientEmail || undefined
+      const emailTaken =
+        email && (await tx.client.findUnique({ where: { email } }))
       client = await tx.client.create({
         data: {
           name: data.clientName,
           phone,
-          email: data.clientEmail || undefined,
+          email: emailTaken ? undefined : email,
         },
       })
+    }
     let barberId = data.barberId
     const startsAt = new Date(`${data.date}T${data.time}:00`)
+    assertBookingWindow(await getSettings(tx), startsAt)
     if (barberId === 'any') {
       const barbers = await tx.barber.findMany({
         where: { isActive: true },
@@ -408,7 +440,7 @@ export async function confirmManagedAppointment(token: string) {
 }
 
 export async function cancelManagedAppointment(token: string) {
-  const a = await runSchedule(async (tx) => {
+  const { a, providerIds } = await runSchedule(async (tx) => {
     const a = await tx.appointment.findUnique({ where: { manageToken: token } })
     if (!a) throw new Error('Link inválido ou expirado')
     await assertChangeable(a)
@@ -420,12 +452,30 @@ export async function cancelManagedAppointment(token: string) {
         notes: [a.notes, 'Cancelado pelo cliente pelo link.'].filter(Boolean).join('\n'),
       },
     })
+    const pending = await tx.pixCharge.findMany({
+      where: { appointmentId: a.id, status: 'PENDING' },
+      select: { providerId: true },
+    })
     await tx.pixCharge.updateMany({
       where: { appointmentId: a.id, status: 'PENDING' },
       data: { status: 'CANCELLED' },
     })
-    return a
+    await releaseOrderItems(tx, a.id)
+    return {
+      a,
+      providerIds: pending
+        .map((p) => p.providerId)
+        .filter((id): id is string => !!id),
+    }
   })
+  // Fora da transação: a rede não segura a trava da agenda. Se falhar, um
+  // pagamento que ainda chegue é registrado pelo aviso do Mercado Pago.
+  const mpToken = providerIds.length ? await mercadoPagoToken() : ''
+  if (mpToken)
+    for (const id of providerIds)
+      await cancelPayment(mpToken, id).catch((error) =>
+        console.error('Falha ao cancelar Pix no Mercado Pago', error),
+      )
   void notifyStaff(
     { title: 'Cliente cancelou', body: await staffLine(a.id), url: '/operacao' },
     a.barberId,
@@ -453,6 +503,7 @@ export async function rescheduleManagedAppointment(token: string, date: string, 
     await assertChangeable(a)
     if (startsAt.getTime() - Date.now() < (await minNoticeMs()))
       throw new Error('Escolha um horário com mais antecedência')
+    assertBookingWindow(await getSettings(tx), startsAt)
     const planned = await assertAvailability(
       tx,
       a.barberId,

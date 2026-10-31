@@ -34,3 +34,17 @@ export function formatWhen(date: Date) {
   const time = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
   return `${weekday}, ${day}, às ${time}`
 }
+
+/** Dentro da pausa de mensagens? "21:00-08:00" atravessa a meia-noite; vazio = sem pausa. */
+export function isQuietTime(window: string | undefined, now = new Date()) {
+  const match = /^(\d{2}):(\d{2})-(\d{2}):(\d{2})$/.exec(window ?? '')
+  if (!match) return false
+  const [, h1, m1, h2, m2] = match.map(Number)
+  const start = h1 * 60 + m1,
+    end = h2 * 60 + m2,
+    minute = now.getHours() * 60 + now.getMinutes()
+  if (start === end) return false
+  return start < end
+    ? minute >= start && minute < end
+    : minute >= start || minute < end
+}

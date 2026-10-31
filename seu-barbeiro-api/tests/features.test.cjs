@@ -201,7 +201,7 @@ test('novas funcionalidades', async (t) => {
     request('/public/appointments', {
       method: 'POST',
       body: {
-        clientName: `Cliente ${stamp}`,
+        clientName: "Cliente Teste",
         clientPhone: phone(),
         barberId: barber.id,
         serviceIds: [service.id],

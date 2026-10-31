@@ -1,5 +1,6 @@
 import { Response } from 'express'
 import { audit } from '../../utils/audit'
+import { prisma } from '../../lib/prisma'
 import { ExpenseStatus } from '@prisma/client'
 import { AuthRequest } from '../../middlewares/auth.middleware'
 import { success, paginate, apiError, publicMessage, pageParams } from '../../utils/response'
@@ -28,7 +29,12 @@ export async function listPaymentsHandler(req: AuthRequest, res: Response) {
 
 export async function createPaymentHandler(req: AuthRequest, res: Response) {
   try {
-    return success(res, await createPayment(req.body), 201)
+    const payment = await createPayment(req.body)
+    // Dinheiro fora de um caixa aberto não entra em nenhum fechamento: o painel avisa.
+    const outsideCash =
+      payment.method === 'CASH' &&
+      !(await prisma.cashSession.count({ where: { closedAt: null } }))
+    return success(res, { ...payment, outsideCash }, 201)
   } catch (err) {
     return apiError(res, publicMessage(err), 400)
   }

@@ -43,6 +43,29 @@ export async function updateSettings(
       (!Number.isFinite(Number(value)) || Number(value) <= 0)
     )
       throw new Error('Valor de configuração inválido')
+    if (
+      key === 'whatsapp_quiet_hours' &&
+      value &&
+      !/^([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0-5]\d$/.test(value)
+    )
+      throw new Error('Pausa de mensagens inválida. Use 21:00-08:00')
+    if (
+      key === 'booking_min_minutes' &&
+      (!Number.isInteger(Number(value)) || Number(value) < 0 || Number(value) > 10080)
+    )
+      throw new Error('Antecedência mínima deve ficar entre 0 e 10080 minutos')
+    if (
+      key === 'booking_max_days' &&
+      (!Number.isInteger(Number(value)) || Number(value) < 1 || Number(value) > 730)
+    )
+      throw new Error('Agenda aberta deve ficar entre 1 e 730 dias')
+    if (
+      key === 'reception_max_discount_percent' &&
+      (!Number.isFinite(Number(value)) || Number(value) < 0 || Number(value) > 100)
+    )
+      throw new Error('Desconto máximo deve ficar entre 0 e 100')
+    if (key === 'professional_can_receive' && !['true', 'false'].includes(value))
+      throw new Error('Valor de configuração inválido')
     if (key === 'whatsapp_api_url' && value) {
       const problem = checkOutboundUrl(value)
       if (problem) throw new Error(`URL do WhatsApp: ${problem}`)

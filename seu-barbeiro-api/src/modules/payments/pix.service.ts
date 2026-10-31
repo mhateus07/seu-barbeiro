@@ -6,7 +6,12 @@ import {
   getPayment,
   type MpPayment,
 } from '../../lib/mercadopago'
-import { runSchedule, type Tx } from '../appointments/scheduling'
+import {
+  queueClientMessage,
+  releaseOrderItems,
+  runSchedule,
+  type Tx,
+} from '../appointments/scheduling'
 import { getSettings } from '../settings/settings.service'
 import { formatWhen } from '../../utils/dates'
 import { notifyStaff } from '../push/push.service'
@@ -241,7 +246,9 @@ export async function activateCharge(
 /** Consulta o Mercado Pago e aplica o resultado da cobrança. */
 export async function refreshPix(chargeId: string) {
   const charge = await prisma.pixCharge.findUnique({ where: { id: chargeId } })
-  if (!charge?.providerId || !['PENDING', 'EXPIRED'].includes(charge.status))
+  // Cancelada também é consultada: o cliente pode pagar antes de o provedor
+  // receber o cancelamento, e esse dinheiro precisa aparecer para a equipe.
+  if (!charge?.providerId || !['PENDING', 'EXPIRED', 'CANCELLED'].includes(charge.status))
     return charge
   const token = await mercadoPagoToken()
   if (!token) return charge
@@ -303,6 +310,16 @@ export async function expireDeposits() {
             .filter(Boolean)
             .join('\n'),
         },
+      })
+      await releaseOrderItems(tx, a.id)
+      const settings = await getSettings(tx)
+      await queueClientMessage(tx, {
+        appointmentId: a.id,
+        clientId: a.clientId,
+        phone: a.client.phone,
+        type: 'APPOINTMENT_CANCELLATION',
+        dedupeKey: `deposit-expired:${a.id}`,
+        message: `Olá, ${a.client.name}! O sinal do horário de ${formatWhen(a.startsAt)} não foi pago no prazo, e a vaga foi liberada. Para marcar de novo: ${publicBase()}/agendar?salon=${currentSalon().slug} · ${settings.shop_name}`,
       })
       return a
     })

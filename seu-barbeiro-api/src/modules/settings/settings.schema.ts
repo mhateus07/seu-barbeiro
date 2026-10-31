@@ -31,6 +31,15 @@ export const SETTING_DEFAULTS: Record<string, string> = {
   whatsapp_api_key: '',
   whatsapp_instance: '',
   whatsapp_reminder_hours: '24',
+  // Lembretes e ofertas automáticas não saem neste intervalo (vazio = sem pausa).
+  whatsapp_quiet_hours: '21:00-08:00',
+  // Agendamento online: antecedência mínima (minutos) e até quantos dias à frente.
+  booking_min_minutes: '30',
+  booking_max_days: '60',
+  // Recepção: desconto máximo na comanda, em %.
+  reception_max_discount_percent: '100',
+  // Profissional lança recebimento nos próprios atendimentos.
+  professional_can_receive: 'false',
   // Link do cliente: antecedência mínima (horas) para confirmar, remarcar ou cancelar.
   client_change_min_hours: '2',
   // Pix via Mercado Pago. O token nunca volta para o navegador.
